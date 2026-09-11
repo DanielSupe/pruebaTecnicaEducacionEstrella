@@ -1,3 +1,4 @@
-// Punto de entrada de los contratos compartidos entre web y api.
-// Los esquemas Zod de la solicitud de credito llegan en el change add-shared-schemas.
-export {};
+// Contrato del dominio compartido entre el navegador y la API.
+// Las mismas reglas validan en ambos lados: es la única forma de que no diverjan.
+export * from "./video.js";
+export * from "./application.js";

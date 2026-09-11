@@ -11,6 +11,9 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"[shared] sin pruebas todavia: llegan en add-shared-schemas\""
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.6.2"
   }
 }

@@ -1,0 +1,46 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Build y caché
+dist/
+build/
+.turbo/
+*.tsbuildinfo
+coverage/
+
+# Secretos y configuración local
+# Se ignora cualquier .env salvo las plantillas de ejemplo.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Claves y certificados
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Terraform
+# El estado puede contener secretos en texto plano y los tfvars llevan valores reales.
+# .terraform.lock.hcl SÍ se versiona: fija las versiones de los providers.
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json

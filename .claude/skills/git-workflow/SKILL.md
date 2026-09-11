@@ -25,7 +25,9 @@ El historial es parte de la entrega: cuídalo.
 
 Título: `<emoji> <tipo>(<scope>): <descripción>`
 
-- Descripción en español, en imperativo, en minúscula, sin punto final.
+- Descripción en español, en minúscula, sin punto final. Es un **sintagma nominal** que nombra
+  lo entregado (`subida de video con presigned POST`), no un verbo conjugado
+  (~~`añade la subida de video`~~).
 - Título completo de **72 caracteres como máximo**.
 - Scopes válidos: `web`, `api`, `shared`, `repo`. Si el change toca varios paquetes, usa el
   scope principal u omítelo.

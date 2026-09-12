@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+.turbo
+coverage
+pnpm-lock.yaml
+*.tfstate
+*.tfstate.*
+.terraform
+
+# Documento fuente del evaluador: se conserva tal cual se recibio.
+prueba-tecnica-fullstack-educacion-estrella.md
+
+# Skills y comandos gestionados por herramientas (OpenSpec los regenera):
+# formatearlos solo produce diffs espurios en cada actualizacion.
+.claude/

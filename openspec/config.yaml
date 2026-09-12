@@ -1,32 +1,53 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+context: |
+  Proyecto: prueba técnica Full Stack para Educación Estrella. El enunciado completo
+  está en prueba-tecnica-fullstack-educacion-estrella.md y es la fuente de verdad de los requisitos.
+  Dominio: un solicitante se registra, inicia sesión, llena una solicitud de crédito
+  educativo con un video de entrevista (.mp4/.webm, máx. 200 MB) y consulta sus
+  solicitudes con estado y fecha. Solo datos ficticios.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  Monorepo: pnpm workspaces + Turborepo. apps/web, apps/api, packages/shared
+  (esquemas Zod compartidos) e infra/ (Terraform).
 
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+  Frontend: React + Vite + TypeScript (SPA), Tailwind CSS, TanStack Router (rutas
+  protegidas con beforeLoad), TanStack Query, TanStack Form, Zod, aws-amplify (solo
+  aws-amplify/auth) y axios para la subida con indicador de progreso.
+
+  Backend: Node.js + Express + TypeScript, API REST. Zod para validar body, params
+  y query. Middleware centralizado de errores con clases de error personalizadas y
+  respuestas JSON consistentes. aws-jwt-verify para validar access tokens de Cognito.
+  AWS SDK v3 (lib-dynamodb, client-s3, s3-presigned-post). helmet y cors restringido
+  al dominio del frontend. @codegenie/serverless-express para Lambda; en local corre
+  con app.listen. Empaquetado con esbuild.
+
+  AWS (us-east-1, dentro del Free Tier): Cognito User Pool + App Client sin secret;
+  DynamoDB on-demand; S3 privado para videos (Block Public Access, SSE-S3, CORS
+  restringido); Lambda + API Gateway HTTP API; S3 + CloudFront con OAC para el
+  frontend; IAM de mínimo privilegio; CloudWatch Logs con retención. Infraestructura
+  con Terraform: la base (DynamoDB, S3 de videos, Cognito) al inicio; Lambda,
+  API Gateway y CloudFront al final.
+
+  Decisiones fijas:
+  - El userId siempre sale del sub del token verificado, nunca del body.
+  - El video sube directo del navegador a S3 con presigned POST
+    (content-length-range hasta 200 MB y Content-Type fijo). La API nunca recibe el archivo.
+  - Validación en cliente y servidor con los mismos esquemas de packages/shared.
+  - A la API se envía el access token, no el ID token.
+
+  Seguridad: ningún secreto, .env, *.tfstate, *.tfvars ni .terraform/ en el repo.
+  Ningún recurso público salvo CloudFront.
+  Calidad: ESLint + Prettier; Vitest + Supertest con pocas pruebas bien elegidas.
+  Fuera de alcance: panel admin, aprobación de créditos, transcodificación,
+  notificaciones, CI/CD, i18n y modo oscuro.
+  Idioma: todos los artefactos de OpenSpec se escriben en español.
+
+rules:
+  proposal:
+    - Incluir una sección "Alternativas descartadas" explicando por qué se descartaron
+    - Indicar qué requisito de prueba-tecnica-fullstack-educacion-estrella.md cubre el change
+  design:
+    - Documentar trade-offs y riesgos de seguridad
+  tasks:
+    - Incluir tareas de prueba cuando haya lógica de validación, autenticación o subida
+    - El change debe poder cerrarse en un único commit de tamaño razonable

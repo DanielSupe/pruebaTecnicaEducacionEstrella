@@ -1,0 +1,14 @@
+{
+  "name": "@educacion-estrella/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"[web] sin pruebas todavia: llegan con el formulario de solicitud\""
+  },
+  "dependencies": {
+    "@educacion-estrella/shared": "workspace:*"
+  }
+}

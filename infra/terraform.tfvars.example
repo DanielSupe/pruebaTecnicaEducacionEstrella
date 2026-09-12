@@ -1,0 +1,11 @@
+# Plantilla de variables. Copia este archivo a terraform.tfvars y ajusta lo que
+# necesites. terraform.tfvars NO se versiona: esta cubierto por .gitignore.
+#
+# Todos los valores tienen un default razonable en variables.tf, asi que este
+# archivo solo hace falta si quieres desviarte de ellos.
+
+# aws_region   = "us-east-1"
+# project_name = "educacion-estrella"
+
+# El change setup-deployment anade aqui el dominio de CloudFront.
+# allowed_upload_origins = ["http://localhost:5173"]

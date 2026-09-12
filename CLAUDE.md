@@ -79,10 +79,36 @@ lo que sabemos que va a crecer".
 
 ## Flujo de trabajo
 
-- Cada funcionalidad nace como un change de OpenSpec en `openspec/changes/<change-id>/`.
-- **Un change = un commit.** Las reglas completas están en la skill `git-workflow`
-  (`.claude/skills/git-workflow/SKILL.md`): síguela siempre que vayas a commitear.
+Cada funcionalidad nace como un change de OpenSpec en `openspec/changes/<change-id>/` y recorre
+tres paradas. **En cada una se espera confirmación explícita: no se pasa de una a la siguiente
+por iniciativa propia.**
+
+1. **Plan.** Se presenta el plan: qué se va a hacer, qué decisiones tiene detrás y qué
+   alternativas se descartan. Todavía no se escribe ningún archivo. Cuando haya más de una
+   opción razonable, se muestran los trade-offs antes de recomendar una.
+
+   **Aquí es donde se pregunta.** El plan es el momento de resolver las ambigüedades: qué
+   interpretación tomar, qué rango aceptar, qué convención seguir. Llegar a la implementación
+   con preguntas pendientes significa que el plan no estaba terminado. Si más adelante aparece
+   una duda de verdad importante —una que cambiaría lo que se construye o invalida algo ya
+   decidido—, se pregunta también, en cuanto aparece y no al final; mientras tanto se avanza
+   con todo lo que no dependa de esa respuesta.
+
+2. **Artefactos.** Aceptado el plan, se escriben los artefactos de OpenSpec: `proposal.md`,
+   `specs/` cuando el change introduce requisitos, y `tasks.md`. Solo eso: ni una línea de
+   código de producto.
+
+3. **Aplicación.** Antes de implementar las tareas se **vuelve a pedir confirmación**. Que el
+   plan y los artefactos estén aprobados no autoriza a tocar el código. Son tres puertas
+   distintas a propósito: escribir el spec es justo el momento en que aparecen los huecos que
+   cambian el plan, y conviene revisarlo antes de construir sobre él.
+
+Después de implementar:
+
 - Antes de proponer un commit, `pnpm turbo lint typecheck test` en verde.
+- **Un change = un commit**, con el change ya archivado. Las reglas completas están en la skill
+  `git-workflow` (`.claude/skills/git-workflow/SKILL.md`): síguela siempre que vayas a
+  commitear, incluido el paso de mostrar el mensaje y esperar confirmación.
 - Todo el desarrollo en `develop`. Nunca commits directos a `main`.
 
 ## Fuera de alcance

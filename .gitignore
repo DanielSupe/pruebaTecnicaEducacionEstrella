@@ -32,6 +32,9 @@ coverage/
 !*.tfvars.example
 crash.log
 crash.*.log
+# Los planes guardados contienen los valores de todos los recursos.
+tfplan
+*.tfplan
 
 # Logs
 *.log

@@ -1,0 +1,43 @@
+import { describe, it, expect } from "vitest";
+import { loadConfig } from "./env.js";
+
+const minimo = { CORS_ALLOWED_ORIGINS: "http://localhost:5173" };
+
+describe("loadConfig", () => {
+  it("acepta una configuracion valida y aplica los valores por omision", () => {
+    const config = loadConfig(minimo);
+
+    expect(config.corsAllowedOrigins).toEqual(["http://localhost:5173"]);
+    expect(config.port).toBe(3000);
+    expect(config.nodeEnv).toBe("development");
+  });
+
+  it("separa varios origenes y descarta los espacios", () => {
+    const config = loadConfig({
+      CORS_ALLOWED_ORIGINS: "http://localhost:5173, https://ejemplo.cloudfront.net",
+    });
+
+    expect(config.corsAllowedOrigins).toEqual([
+      "http://localhost:5173",
+      "https://ejemplo.cloudfront.net",
+    ]);
+  });
+
+  it("falla si falta una variable obligatoria, diciendo cual", () => {
+    // Sin esto, un despliegue mal configurado se rompe a mitad de una peticion
+    // real en vez de negarse a arrancar.
+    expect(() => loadConfig({})).toThrowError(/CORS_ALLOWED_ORIGINS/);
+  });
+
+  it.each(["", "   "])("falla si la variable obligatoria esta vacia (%s)", (valor) => {
+    expect(() => loadConfig({ CORS_ALLOWED_ORIGINS: valor })).toThrowError();
+  });
+
+  it.each(["no-es-un-numero", "-1", "99999"])("rechaza el puerto invalido %s", (PORT) => {
+    expect(() => loadConfig({ ...minimo, PORT })).toThrowError();
+  });
+
+  it("rechaza un entorno no reconocido", () => {
+    expect(() => loadConfig({ ...minimo, NODE_ENV: "staging" })).toThrowError();
+  });
+});

@@ -1,3 +1,16 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+allowBuilds:
+  esbuild: true
+
+# pnpm bloquea por omision los scripts de instalacion de las dependencias, que es
+# una proteccion sensata contra paquetes que ejecutan codigo al instalarse.
+# Aqui se autorizan uno a uno los que de verdad lo necesitan, en lugar de
+# desactivar la proteccion entera.
+#
+# esbuild: descarga el binario nativo de su plataforma en el postinstall.
+# Lo arrastra tsx, que es lo que ejecuta la API en desarrollo.
+onlyBuiltDependencies:
+  - esbuild

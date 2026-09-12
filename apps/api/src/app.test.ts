@@ -6,13 +6,19 @@ import { errorHandler } from "./middleware/error-handler.js";
 
 const config = { corsAllowedOrigins: ["http://localhost:5173"] };
 
+// Doble del verificador: estas pruebas son del contrato de la app, no de la
+// verificacion de tokens. Esa vive en authenticate.test.ts.
+const verifier = { verify: () => Promise.resolve({ sub: "usuario-de-prueba" }) };
+
+const app = () => createApp(config, verifier);
+
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 describe("GET /api/v1/health", () => {
   it("responde que el servicio esta vivo", async () => {
-    const res = await request(createApp(config)).get("/api/v1/health");
+    const res = await request(app()).get("/api/v1/health");
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ status: "ok" });
@@ -22,7 +28,7 @@ describe("GET /api/v1/health", () => {
 
 describe("rutas desconocidas", () => {
   it("responde 404 con el formato comun de error, no con el HTML de Express", async () => {
-    const res = await request(createApp(config)).get("/api/v1/no-existe");
+    const res = await request(app()).get("/api/v1/no-existe");
 
     expect(res.status).toBe(404);
     expect(res.body).toEqual({
@@ -102,7 +108,7 @@ describe("errores inesperados", () => {
 
 describe("cuerpo de la peticion", () => {
   it("responde 400 con el formato comun si el JSON esta mal formado", async () => {
-    const res = await request(createApp(config))
+    const res = await request(app())
       .post("/api/v1/health")
       .set("Content-Type", "application/json")
       .send("{ esto no es json");

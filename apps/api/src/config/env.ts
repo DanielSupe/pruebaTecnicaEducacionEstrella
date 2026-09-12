@@ -40,12 +40,27 @@ const envSchema = z.object({
       (origenes) => origenes.length > 0,
       "CORS_ALLOWED_ORIGINS debe incluir al menos un origen",
     ),
+
+  // Identificadores del directorio de usuarios. Obligatorios y sin valor por
+  // omision: un default significaria verificar los tokens contra el directorio
+  // equivocado, que es peor que no verificarlos, porque parece que funciona.
+  COGNITO_USER_POOL_ID: z
+    .string({ error: "COGNITO_USER_POOL_ID es obligatoria" })
+    .trim()
+    .min(1, "COGNITO_USER_POOL_ID no puede estar vacia"),
+
+  COGNITO_CLIENT_ID: z
+    .string({ error: "COGNITO_CLIENT_ID es obligatoria" })
+    .trim()
+    .min(1, "COGNITO_CLIENT_ID no puede estar vacia"),
 });
 
 export type AppConfig = {
   nodeEnv: "development" | "test" | "production";
   port: number;
   corsAllowedOrigins: string[];
+  cognitoUserPoolId: string;
+  cognitoClientId: string;
 };
 
 /**
@@ -66,5 +81,7 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     nodeEnv: parsed.data.NODE_ENV,
     port: parsed.data.PORT,
     corsAllowedOrigins: parsed.data.CORS_ALLOWED_ORIGINS,
+    cognitoUserPoolId: parsed.data.COGNITO_USER_POOL_ID,
+    cognitoClientId: parsed.data.COGNITO_CLIENT_ID,
   };
 }

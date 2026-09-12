@@ -25,3 +25,14 @@ export class NotFoundError extends AppError {
     super(message, 404, "NOT_FOUND");
   }
 }
+
+export class UnauthorizedError extends AppError {
+  /**
+   * El mensaje es deliberadamente generico y no distingue entre token ausente,
+   * caducado, manipulado o emitido para otro cliente. Precisar el motivo solo
+   * ayuda a quien esta probando tokens: el usuario legitimo no necesita saberlo.
+   */
+  constructor(message = "Credenciales ausentes o invalidas.") {
+    super(message, 401, "UNAUTHORIZED");
+  }
+}

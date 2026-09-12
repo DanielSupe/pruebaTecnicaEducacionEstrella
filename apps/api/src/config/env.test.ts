@@ -1,7 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { loadConfig } from "./env.js";
 
-const minimo = { CORS_ALLOWED_ORIGINS: "http://localhost:5173" };
+const minimo = {
+  CORS_ALLOWED_ORIGINS: "http://localhost:5173",
+  COGNITO_USER_POOL_ID: "us-east-1_XXXXXXXXX",
+  COGNITO_CLIENT_ID: "clienteficticio123",
+};
 
 describe("loadConfig", () => {
   it("acepta una configuracion valida y aplica los valores por omision", () => {
@@ -14,6 +18,7 @@ describe("loadConfig", () => {
 
   it("separa varios origenes y descarta los espacios", () => {
     const config = loadConfig({
+      ...minimo,
       CORS_ALLOWED_ORIGINS: "http://localhost:5173, https://ejemplo.cloudfront.net",
     });
 
@@ -30,8 +35,16 @@ describe("loadConfig", () => {
   });
 
   it.each(["", "   "])("falla si la variable obligatoria esta vacia (%s)", (valor) => {
-    expect(() => loadConfig({ CORS_ALLOWED_ORIGINS: valor })).toThrowError();
+    expect(() => loadConfig({ ...minimo, CORS_ALLOWED_ORIGINS: valor })).toThrowError();
   });
+
+  it.each(["COGNITO_USER_POOL_ID", "COGNITO_CLIENT_ID"])(
+    "falla si falta %s, diciendo cual",
+    (variable) => {
+      const { [variable]: _omitida, ...incompleta } = minimo as Record<string, string>;
+      expect(() => loadConfig(incompleta)).toThrowError(new RegExp(variable));
+    },
+  );
 
   it.each(["no-es-un-numero", "-1", "99999"])("rechaza el puerto invalido %s", (PORT) => {
     expect(() => loadConfig({ ...minimo, PORT })).toThrowError();

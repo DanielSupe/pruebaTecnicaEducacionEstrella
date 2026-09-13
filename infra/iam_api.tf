@@ -16,6 +16,8 @@ data "aws_iam_policy_document" "api" {
 
     actions = [
       "dynamodb:PutItem",
+      "dynamodb:GetItem",
+      "dynamodb:UpdateItem",
     ]
 
     resources = [aws_dynamodb_table.applications.arn]
@@ -28,6 +30,11 @@ data "aws_iam_policy_document" "api" {
     actions = [
       "s3:PutObject",
       "s3:PutObjectTagging",
+
+      # Lo que exige HeadObject, aunque el nombre de la operacion no lo sugiera:
+      # comprobar si un objeto existe y con que metadatos se autoriza con el
+      # permiso de lectura.
+      "s3:GetObject",
     ]
 
     # Solo bajo el prefijo de videos, no sobre el bucket entero.

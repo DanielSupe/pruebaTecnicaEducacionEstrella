@@ -4,17 +4,48 @@ import express from "express";
 import type { RequestHandler } from "express";
 import { errorHandler, notFoundHandler } from "../../middleware/error-handler.js";
 
+const SUB = "947844e8-5031-701a-bdf1-6d13401f76e9";
+
 const crearSolicitud = vi.fn();
 const autorizarSubida = vi.fn();
+const leerSolicitud = vi.fn();
+const marcarEnviada = vi.fn();
+const verificarVideo = vi.fn();
+const marcarConfirmado = vi.fn();
+
+/** Registro del orden en que se llamaron las operaciones del aviso. */
+const orden: string[] = [];
 
 // Solo se simula lo que habla con AWS. El repositorio y el autorizador se
 // inyectan como dependencias, asi que no hace falta interceptar modulos.
 import { createApplicationsRouter } from "./routes.js";
 
-const repositorio = { createApplication: crearSolicitud };
-const subidas = { authorizeUpload: autorizarSubida };
+const repositorio = {
+  createApplication: crearSolicitud,
+  getApplication: leerSolicitud,
+  markAsSubmitted: marcarEnviada,
+};
 
-const SUB = "947844e8-5031-701a-bdf1-6d13401f76e9";
+const subidas = {
+  authorizeUpload: autorizarSubida,
+  verifyStoredVideo: verificarVideo,
+  markVideoAsConfirmed: marcarConfirmado,
+};
+
+const SOLICITUD_PENDIENTE = {
+  applicationId: "01HXYZ",
+  userId: SUB,
+  status: "PENDING_VIDEO" as const,
+  videoContentType: "video/mp4" as const,
+  videoKey: `videos/${SUB}/01HXYZ.mp4`,
+  fullName: "Ana María Restrepo",
+  idDocument: "1012345678",
+  institution: "Universidad Nacional",
+  program: "Ingeniería",
+  amount: 8_500_000,
+  createdAt: "2026-09-13T10:00:00.000Z",
+  updatedAt: "2026-09-13T10:00:00.000Z",
+};
 
 const datosValidos = {
   fullName: "Ana María Restrepo",
@@ -43,8 +74,31 @@ function app(userId: string | null = SUB) {
 }
 
 beforeEach(() => {
+  orden.length = 0;
   crearSolicitud.mockReset();
   autorizarSubida.mockReset();
+  leerSolicitud.mockReset();
+  marcarEnviada.mockReset();
+  verificarVideo.mockReset();
+  marcarConfirmado.mockReset();
+
+  leerSolicitud.mockResolvedValue(SOLICITUD_PENDIENTE);
+  verificarVideo.mockImplementation(() => {
+    orden.push("verificar");
+    return Promise.resolve({ estado: "correcto", sizeBytes: 15_728_640 });
+  });
+  marcarConfirmado.mockImplementation(() => {
+    orden.push("reetiquetar");
+    return Promise.resolve();
+  });
+  marcarEnviada.mockImplementation(() => {
+    orden.push("actualizar");
+    return Promise.resolve({
+      ...SOLICITUD_PENDIENTE,
+      status: "UNDER_REVIEW",
+      videoSizeBytes: 15_728_640,
+    });
+  });
 
   crearSolicitud.mockImplementation(
     (userId: string, _datos: unknown, videoKeyFor: (id: string) => string) => ({
@@ -148,5 +202,111 @@ describe("POST /applications: ruta del objeto", () => {
       .send({ ...datosValidos, videoContentType: "video/webm" });
 
     expect(autorizarSubida).toHaveBeenCalledWith(`videos/${SUB}/01HXYZ.webm`, "video/webm");
+  });
+});
+
+describe("POST /:id/complete-upload", () => {
+  const url = "/api/v1/applications/01HXYZ/complete-upload";
+
+  it("da la solicitud por enviada y registra el tamaño real", async () => {
+    const res = await request(app()).post(url).send();
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("UNDER_REVIEW");
+    expect(res.body.videoSizeBytes).toBe(15_728_640);
+    expect(marcarEnviada).toHaveBeenCalledWith(SUB, "01HXYZ", 15_728_640);
+  });
+
+  it("reetiqueta ANTES de actualizar", async () => {
+    // El orden no es indiferente: al reves, un fallo entre medias dejaria una
+    // solicitud enviada con el video aun marcado como pendiente, y la limpieza
+    // automatica lo borraria. Un test que solo comprobara que ambas ocurren
+    // pasaria igual con el orden equivocado.
+    await request(app()).post(url).send();
+
+    expect(orden).toEqual(["verificar", "reetiquetar", "actualizar"]);
+  });
+
+  it("no expone la ruta interna del objeto", async () => {
+    const res = await request(app()).post(url).send();
+
+    expect(res.body.videoKey).toBeUndefined();
+  });
+
+  it("responde con conflicto si no hay video almacenado, sin tocar nada", async () => {
+    verificarVideo.mockResolvedValue({ estado: "ausente" });
+
+    const res = await request(app()).post(url).send();
+
+    expect(res.status).toBe(409);
+    expect(marcarConfirmado).not.toHaveBeenCalled();
+    expect(marcarEnviada).not.toHaveBeenCalled();
+  });
+
+  it("responde con conflicto si el objeto no coincide con lo autorizado", async () => {
+    verificarVideo.mockResolvedValue({ estado: "no-coincide", motivo: "el tamaño no es válido" });
+
+    const res = await request(app()).post(url).send();
+
+    expect(res.status).toBe(409);
+    expect(marcarEnviada).not.toHaveBeenCalled();
+  });
+
+  it("avisar dos veces devuelve exito sin repetir los efectos", async () => {
+    leerSolicitud.mockResolvedValue({ ...SOLICITUD_PENDIENTE, status: "UNDER_REVIEW" });
+
+    const res = await request(app()).post(url).send();
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe("UNDER_REVIEW");
+    expect(verificarVideo).not.toHaveBeenCalled();
+    expect(marcarConfirmado).not.toHaveBeenCalled();
+  });
+
+  it("una solicitud ajena se comporta como inexistente", async () => {
+    leerSolicitud.mockResolvedValue(null);
+
+    const res = await request(app()).post(url).send();
+
+    expect(res.status).toBe(404);
+  });
+
+  it("sin autenticacion devuelve 401 y no toca nada", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await request(app(null)).post(url).send();
+
+    expect(res.status).toBe(401);
+    expect(leerSolicitud).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /:id/video-url", () => {
+  const url = "/api/v1/applications/01HXYZ/video-url";
+
+  it("devuelve una autorizacion nueva para la MISMA ruta", async () => {
+    // La ruta se reutiliza a proposito: reintentar sobreescribe en lugar de ir
+    // dejando huerfanos por cada intento.
+    const res = await request(app()).post(url).send();
+
+    expect(res.status).toBe(200);
+    expect(autorizarSubida).toHaveBeenCalledWith(`videos/${SUB}/01HXYZ.mp4`, "video/mp4");
+  });
+
+  it("responde con conflicto si la solicitud ya fue enviada", async () => {
+    leerSolicitud.mockResolvedValue({ ...SOLICITUD_PENDIENTE, status: "UNDER_REVIEW" });
+
+    const res = await request(app()).post(url).send();
+
+    expect(res.status).toBe(409);
+    expect(autorizarSubida).not.toHaveBeenCalled();
+  });
+
+  it("una solicitud ajena se comporta como inexistente", async () => {
+    leerSolicitud.mockResolvedValue(null);
+
+    const res = await request(app()).post(url).send();
+
+    expect(res.status).toBe(404);
   });
 });

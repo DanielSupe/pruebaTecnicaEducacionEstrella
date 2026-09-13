@@ -1,7 +1,16 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+  UpdateCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { ulid } from "ulid";
-import type { ApplicationStatus, CreateApplicationInput } from "@educacion-estrella/shared";
+import type {
+  Application,
+  ApplicationStatus,
+  CreateApplicationInput,
+} from "@educacion-estrella/shared";
 import type { AppConfig } from "../../config/env.js";
 
 /** Dias que sobrevive una solicitud que nunca llega a confirmarse. */
@@ -28,12 +37,25 @@ function segundosHastaExpirar(desde: Date): number {
  * El plazo de expiracion se alinea con la limpieza del almacenamiento. Si
  * divergieran, quedarian solicitudes apuntando a videos inexistentes.
  */
+/** Solicitud tal y como esta guardada, con lo que solo conoce el servidor. */
+export type StoredApplication = Application & {
+  videoKey: string;
+};
+
 export type ApplicationsRepository = {
   createApplication: (
     userId: string,
     datos: CreateApplicationInput,
     videoKeyFor: (applicationId: string) => string,
   ) => Promise<NewApplication>;
+
+  getApplication: (userId: string, applicationId: string) => Promise<StoredApplication | null>;
+
+  markAsSubmitted: (
+    userId: string,
+    applicationId: string,
+    videoSizeBytes: number,
+  ) => Promise<StoredApplication | null>;
 };
 
 /**
@@ -55,7 +77,7 @@ export function createApplicationsRepository(
     marshallOptions: { removeUndefinedValues: true },
   });
 
-  return { createApplication };
+  return { createApplication, getApplication, markAsSubmitted };
 
   async function createApplication(
     userId: string,
@@ -96,5 +118,72 @@ export function createApplicationsRepository(
     );
 
     return { applicationId, userId, videoKey, createdAt };
+  }
+
+  /**
+   * Lee una solicitud del solicitante indicado.
+   *
+   * La lectura va por clave, nunca recorriendo la tabla. Y la identidad forma
+   * parte de la clave, asi que una solicitud ajena simplemente no aparece: no
+   * hay que acordarse de comprobar el propietario despues.
+   */
+  async function getApplication(
+    userId: string,
+    applicationId: string,
+  ): Promise<StoredApplication | null> {
+    const { Item } = await documentos.send(
+      new GetCommand({
+        TableName: config.applicationsTableName,
+        Key: { PK: `USER#${userId}`, SK: `APP#${applicationId}` },
+      }),
+    );
+
+    return (Item as StoredApplication | undefined) ?? null;
+  }
+
+  /**
+   * Da la solicitud por enviada.
+   *
+   * Devuelve null si la condicion no se cumple, es decir si ya no estaba
+   * pendiente. Quien llama decide que significa eso: aqui, que el aviso llego
+   * repetido, lo cual no es un error.
+   *
+   * Retirar el plazo de expiracion NO es opcional. Sin ese REMOVE, una solicitud
+   * enviada desaparece a los siete dias sin ruido, sin error y sin rastro.
+   */
+  async function markAsSubmitted(
+    userId: string,
+    applicationId: string,
+    videoSizeBytes: number,
+  ): Promise<StoredApplication | null> {
+    const pendiente: ApplicationStatus = "PENDING_VIDEO";
+    const enviada: ApplicationStatus = "UNDER_REVIEW";
+
+    try {
+      const { Attributes } = await documentos.send(
+        new UpdateCommand({
+          TableName: config.applicationsTableName,
+          Key: { PK: `USER#${userId}`, SK: `APP#${applicationId}` },
+          UpdateExpression:
+            "SET #status = :enviada, videoSizeBytes = :tamano, updatedAt = :ahora REMOVE #ttl",
+          ConditionExpression: "attribute_exists(PK) AND #status = :pendiente",
+          ExpressionAttributeNames: { "#status": "status", "#ttl": "ttl" },
+          ExpressionAttributeValues: {
+            ":enviada": enviada,
+            ":pendiente": pendiente,
+            ":tamano": videoSizeBytes,
+            ":ahora": new Date().toISOString(),
+          },
+          ReturnValues: "ALL_NEW",
+        }),
+      );
+
+      return (Attributes as StoredApplication | undefined) ?? null;
+    } catch (error) {
+      if (error instanceof Error && error.name === "ConditionalCheckFailedException") {
+        return null;
+      }
+      throw error;
+    }
   }
 }

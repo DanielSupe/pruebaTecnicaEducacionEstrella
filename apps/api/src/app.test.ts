@@ -61,7 +61,7 @@ describe("errores inesperados", () => {
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({
-      error: { code: "INTERNAL_ERROR", message: "Ocurrio un error inesperado." },
+      error: { code: "INTERNAL_ERROR", message: "Ocurrió un error inesperado." },
     });
 
     // Lo que de verdad importa: nada del error original viaja al cliente.

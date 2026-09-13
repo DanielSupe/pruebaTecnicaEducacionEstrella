@@ -25,9 +25,9 @@ function clientBodyError(error: unknown): ErrorBody | null {
 
   switch ((error as { type: unknown }).type) {
     case "entity.parse.failed":
-      return body("INVALID_JSON", "El cuerpo de la peticion no es JSON valido.");
+      return body("INVALID_JSON", "El cuerpo de la petición no es JSON válido.");
     case "entity.too.large":
-      return body("PAYLOAD_TOO_LARGE", "El cuerpo de la peticion es demasiado grande.");
+      return body("PAYLOAD_TOO_LARGE", "El cuerpo de la petición es demasiado grande.");
     default:
       return null;
   }
@@ -58,7 +58,7 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   // Una traza en la respuesta describe la estructura interna a quien la pida.
   console.error("Error inesperado:", error);
 
-  res.status(500).json(body("INTERNAL_ERROR", "Ocurrio un error inesperado."));
+  res.status(500).json(body("INTERNAL_ERROR", "Ocurrió un error inesperado."));
 };
 
 /**

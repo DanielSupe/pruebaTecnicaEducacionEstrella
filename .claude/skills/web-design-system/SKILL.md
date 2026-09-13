@@ -22,6 +22,10 @@ plantilla que se reconoce al instante.
 No refactorices lo que no estás tocando. No cambies la arquitectura. No instales una librería de
 UI sin plantearlo antes y explicar qué problema concreto resuelve que no resuelva Tailwind.
 
+La única aprobada es **SweetAlert2**, para ventanas emergentes, por la trampa de foco y el manejo
+de teclado. Se usa siempre a través del envoltorio del proyecto y tematizada con estos tokens:
+sin tematizar delata la librería. Ver `patterns.md`.
+
 ## Cinco principios
 
 **Un acento, todo lo demás neutro.** El color de marca se reserva para la acción primaria, el

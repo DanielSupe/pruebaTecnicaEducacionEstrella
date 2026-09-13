@@ -32,7 +32,7 @@ export class UnauthorizedError extends AppError {
    * caducado, manipulado o emitido para otro cliente. Precisar el motivo solo
    * ayuda a quien esta probando tokens: el usuario legitimo no necesita saberlo.
    */
-  constructor(message = "Credenciales ausentes o invalidas.") {
+  constructor(message = "Credenciales ausentes o inválidas.") {
     super(message, 401, "UNAUTHORIZED");
   }
 }

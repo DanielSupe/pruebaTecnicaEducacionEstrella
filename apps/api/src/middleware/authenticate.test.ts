@@ -26,7 +26,7 @@ describe("rutas protegidas", () => {
 
     expect(res.status).toBe(401);
     expect(res.body).toEqual({
-      error: { code: "UNAUTHORIZED", message: "Credenciales ausentes o invalidas." },
+      error: { code: "UNAUTHORIZED", message: "Credenciales ausentes o inválidas." },
     });
   });
 

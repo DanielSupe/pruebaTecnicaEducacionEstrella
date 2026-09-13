@@ -1,6 +1,9 @@
 import { Router } from "express";
 import type { RequestHandler } from "express";
-import { createApplicationInputSchema } from "@educacion-estrella/shared";
+import {
+  createApplicationInputSchema,
+  listApplicationsQuerySchema,
+} from "@educacion-estrella/shared";
 import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../../errors.js";
 import type { ApplicationsRepository } from "./repository.js";
 import { type UploadAuthorizer, videoKeyFor } from "./uploads.js";
@@ -46,6 +49,37 @@ export function createApplicationsRouter(
           status: "PENDING_VIDEO",
           upload,
         });
+      } catch (error) {
+        next(error);
+      }
+    })();
+  });
+
+  /**
+   * Solicitudes del solicitante autenticado.
+   *
+   * No tener ninguna es un estado normal de quien acaba de registrarse, asi que
+   * se responde con una lista vacia y exito: tratarlo como error obligaria al
+   * navegador a distinguir "vacio" de "fallo".
+   */
+  router.get("/applications", authenticate, (req, res, next) => {
+    void (async () => {
+      try {
+        const userId = req.user?.userId;
+        if (!userId) throw new UnauthorizedError();
+
+        const parametros = listApplicationsQuerySchema.safeParse(req.query);
+
+        if (!parametros.success) {
+          const primero = parametros.error.issues[0];
+          throw new BadRequestError(primero?.message ?? "Parámetros de consulta inválidos.");
+        }
+
+        // La identidad sale del token. Si la peticion trae un userId, se ignora:
+        // ni siquiera llega hasta aqui.
+        const { items, nextCursor } = await repositorio.listApplications(userId, parametros.data);
+
+        res.json({ items: items.map(sinClaveInterna), nextCursor });
       } catch (error) {
         next(error);
       }

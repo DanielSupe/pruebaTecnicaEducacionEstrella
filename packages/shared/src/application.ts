@@ -100,3 +100,33 @@ export const createApplicationResponseSchema = z.object({
 });
 
 export type CreateApplicationResponse = z.infer<typeof createApplicationResponseSchema>;
+
+/**
+ * Parametros de la consulta del listado.
+ *
+ * Aqui SI se convierte desde texto, al contrario que en el cuerpo de la
+ * creacion: una cadena de consulta solo puede transportar texto, asi que no hay
+ * nada que relajar. En un cuerpo JSON aceptar "5000" donde se espera un numero
+ * si relajaria la validacion, y por eso alli no se hace.
+ */
+export const listApplicationsQuerySchema = z.object({
+  limit: z.coerce
+    .number({ error: "El límite debe ser un número" })
+    .int("El límite debe ser un número entero")
+    .min(1, "El límite debe ser al menos 1")
+    .max(50, "El límite no puede superar 50")
+    .default(20),
+
+  // Opaco a proposito: el cliente lo devuelve tal cual sin interpretarlo.
+  cursor: z.string().min(1).optional(),
+});
+
+export type ListApplicationsQuery = z.infer<typeof listApplicationsQuerySchema>;
+
+/** Una pagina de solicitudes. Sin puntero significa que no quedan mas. */
+export const paginatedApplicationsSchema = z.object({
+  items: z.array(applicationSchema),
+  nextCursor: z.string().optional(),
+});
+
+export type PaginatedApplications = z.infer<typeof paginatedApplicationsSchema>;

@@ -4,6 +4,7 @@ import {
   PutCommand,
   GetCommand,
   UpdateCommand,
+  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { ulid } from "ulid";
 import type {
@@ -56,7 +57,36 @@ export type ApplicationsRepository = {
     applicationId: string,
     videoSizeBytes: number,
   ) => Promise<StoredApplication | null>;
+
+  listApplications: (
+    userId: string,
+    opciones: { limit: number; cursor?: string },
+  ) => Promise<{ items: StoredApplication[]; nextCursor?: string }>;
 };
+
+/**
+ * El puntero de continuacion viaja en una URL, asi que se codifica.
+ *
+ * Solo lleva el identificador de la solicitud por la que seguir. La clave de
+ * particion NO viaja en el: se reconstruye siempre con la identidad del token,
+ * de modo que manipularlo no puede llevar a leer la particion de otro usuario.
+ */
+function codificarCursor(sk: string): string {
+  return Buffer.from(sk, "utf8").toString("base64url");
+}
+
+function decodificarCursor(cursor: string | undefined): string | null {
+  if (!cursor) return null;
+
+  try {
+    const sk = Buffer.from(cursor, "base64url").toString("utf8");
+    // Un puntero que no tenga la forma esperada se trata como ausencia, no como
+    // un fallo: un cursor corrupto en la URL no deberia producir un error 500.
+    return sk.startsWith("APP#") ? sk : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Fabrica el acceso a datos con la configuracion ya validada.
@@ -77,7 +107,7 @@ export function createApplicationsRepository(
     marshallOptions: { removeUndefinedValues: true },
   });
 
-  return { createApplication, getApplication, markAsSubmitted };
+  return { createApplication, getApplication, markAsSubmitted, listApplications };
 
   async function createApplication(
     userId: string,
@@ -185,5 +215,43 @@ export function createApplicationsRepository(
       }
       throw error;
     }
+  }
+
+  /**
+   * Solicitudes de un usuario, de mas reciente a mas antigua.
+   *
+   * Consulta por clave de particion, nunca recorriendo la tabla. El orden sale
+   * gratis: el identificador de la clave de ordenacion es un ULID, que ordena
+   * lexicograficamente por tiempo, asi que basta con recorrerla al reves. Sin
+   * indice secundario y sin ordenar en memoria.
+   */
+  async function listApplications(
+    userId: string,
+    opciones: { limit: number; cursor?: string },
+  ): Promise<{ items: StoredApplication[]; nextCursor?: string }> {
+    const sk = decodificarCursor(opciones.cursor);
+
+    const { Items, LastEvaluatedKey } = await documentos.send(
+      new QueryCommand({
+        TableName: config.applicationsTableName,
+        KeyConditionExpression: "PK = :pk",
+        ExpressionAttributeValues: { ":pk": `USER#${userId}` },
+        // Al reves: las mas recientes primero.
+        ScanIndexForward: false,
+        Limit: opciones.limit,
+        // La clave de particion se construye SIEMPRE con la identidad recibida,
+        // nunca con nada que venga del puntero. Es lo que impide que un cursor
+        // manipulado lleve a la particion de otro usuario.
+        ExclusiveStartKey: sk ? { PK: `USER#${userId}`, SK: sk } : undefined,
+      }),
+    );
+
+    const items = (Items ?? []) as StoredApplication[];
+    const siguienteSk = LastEvaluatedKey?.SK as string | undefined;
+
+    return {
+      items,
+      nextCursor: siguienteSk ? codificarCursor(siguienteSk) : undefined,
+    };
   }
 }

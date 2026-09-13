@@ -12,6 +12,7 @@ const leerSolicitud = vi.fn();
 const marcarEnviada = vi.fn();
 const verificarVideo = vi.fn();
 const marcarConfirmado = vi.fn();
+const listarSolicitudes = vi.fn();
 
 /** Registro del orden en que se llamaron las operaciones del aviso. */
 const orden: string[] = [];
@@ -24,6 +25,7 @@ const repositorio = {
   createApplication: crearSolicitud,
   getApplication: leerSolicitud,
   markAsSubmitted: marcarEnviada,
+  listApplications: listarSolicitudes,
 };
 
 const subidas = {
@@ -81,6 +83,8 @@ beforeEach(() => {
   marcarEnviada.mockReset();
   verificarVideo.mockReset();
   marcarConfirmado.mockReset();
+  listarSolicitudes.mockReset();
+  listarSolicitudes.mockResolvedValue({ items: [], nextCursor: undefined });
 
   leerSolicitud.mockResolvedValue(SOLICITUD_PENDIENTE);
   verificarVideo.mockImplementation(() => {
@@ -308,5 +312,90 @@ describe("POST /:id/video-url", () => {
     const res = await request(app()).post(url).send();
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /applications", () => {
+  const url = "/api/v1/applications";
+
+  it("consulta con la identidad DEL TOKEN", async () => {
+    await request(app()).get(url);
+
+    expect(listarSolicitudes).toHaveBeenCalledOnce();
+    expect(listarSolicitudes.mock.calls[0]?.[0]).toBe(SUB);
+  });
+
+  it("ignora un identificador de usuario que venga en la petición", async () => {
+    await request(app()).get(`${url}?userId=usuario-ajeno`);
+
+    expect(listarSolicitudes.mock.calls[0]?.[0]).toBe(SUB);
+  });
+
+  it("sin solicitudes devuelve lista vacía y éxito, no un error", async () => {
+    // No tener ninguna es el estado normal de quien acaba de registrarse.
+    const res = await request(app()).get(url);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ items: [] });
+  });
+
+  it("devuelve las solicitudes con su estado y su fecha", async () => {
+    listarSolicitudes.mockResolvedValue({
+      items: [SOLICITUD_PENDIENTE, { ...SOLICITUD_PENDIENTE, applicationId: "01HXYA" }],
+      nextCursor: undefined,
+    });
+
+    const res = await request(app()).get(url);
+
+    expect(res.body.items).toHaveLength(2);
+    expect(res.body.items[0]).toMatchObject({
+      status: "PENDING_VIDEO",
+      createdAt: expect.any(String),
+    });
+  });
+
+  it("no expone la ruta interna del objeto en ninguna solicitud", async () => {
+    listarSolicitudes.mockResolvedValue({ items: [SOLICITUD_PENDIENTE], nextCursor: undefined });
+
+    const res = await request(app()).get(url);
+
+    expect(res.body.items[0].videoKey).toBeUndefined();
+    expect(JSON.stringify(res.body)).not.toContain("videos/");
+  });
+
+  it("aplica el límite por omisión cuando no se indica", async () => {
+    await request(app()).get(url);
+
+    expect(listarSolicitudes.mock.calls[0]?.[1]).toMatchObject({ limit: 20 });
+  });
+
+  it("traslada el límite y el puntero recibidos", async () => {
+    await request(app()).get(`${url}?limit=5&cursor=QVBQIzAx`);
+
+    expect(listarSolicitudes.mock.calls[0]?.[1]).toMatchObject({ limit: 5, cursor: "QVBQIzAx" });
+  });
+
+  it.each(["0", "51", "-1", "abc", "2.5"])("rechaza el límite inválido %s", async (limit) => {
+    const res = await request(app()).get(`${url}?limit=${limit}`);
+
+    expect(res.status).toBe(400);
+    expect(listarSolicitudes).not.toHaveBeenCalled();
+  });
+
+  it("devuelve el puntero cuando quedan más resultados", async () => {
+    listarSolicitudes.mockResolvedValue({ items: [SOLICITUD_PENDIENTE], nextCursor: "QVBQIzAy" });
+
+    const res = await request(app()).get(url);
+
+    expect(res.body.nextCursor).toBe("QVBQIzAy");
+  });
+
+  it("sin autenticación devuelve 401 y no consulta nada", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await request(app(null)).get(url);
+
+    expect(res.status).toBe(401);
+    expect(listarSolicitudes).not.toHaveBeenCalled();
   });
 });

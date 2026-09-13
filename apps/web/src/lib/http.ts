@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance } from "axios";
 import { config } from "../config/config.js";
+import { getAccessToken } from "./session.js";
 
 /**
  * Error ya traducido a algo que se le puede enseñar a una persona.
@@ -75,19 +76,53 @@ export function toApiError(error: unknown): ApiError {
   return new ApiError("Ocurrió un error inesperado.", "UNKNOWN", { retriable: true });
 }
 
-/**
- * Cliente hacia la API.
- *
- * Sin interceptor de credenciales todavia: llega en add-web-auth, cuando exista
- * un token que adjuntar.
- */
+/** Cliente hacia la API. */
 export const http: AxiosInstance = axios.create({
   baseURL: config.apiBaseUrl,
   timeout: 15_000,
   headers: { "Content-Type": "application/json" },
 });
 
+/**
+ * Adjunta el token de acceso vigente.
+ *
+ * Se pide en CADA peticion y nunca se guarda una copia: es la libreria de
+ * autenticacion quien decide si toca renovar. Cachearlo por nuestra cuenta
+ * significa enviar tokens caducados justo cuando alguien lleva rato trabajando.
+ *
+ * Si no hay sesion, la peticion sale sin cabecera en lugar de fallar: las
+ * pantallas publicas tambien usan este cliente.
+ */
+http.interceptors.request.use(async (peticion) => {
+  const token = await getAccessToken();
+  if (token) {
+    peticion.headers.Authorization = `Bearer ${token}`;
+  }
+  return peticion;
+});
+
+/**
+ * Manejador de sesion caducada.
+ *
+ * Lo instala la aplicacion al arrancar, porque este modulo no conoce ni el
+ * router ni el cliente de consultas. Sin esto, un rechazo por credenciales
+ * dejaria al usuario ante una pantalla que ya no va a funcionar.
+ */
+let alRechazarSesion: (() => void) | null = null;
+
+export function onSessionRejected(manejador: () => void): void {
+  alRechazarSesion = manejador;
+}
+
 http.interceptors.response.use(
   (response) => response,
-  (error: unknown) => Promise.reject(toApiError(error)),
+  (error: unknown) => {
+    const apiError = toApiError(error);
+
+    if (apiError.status === 401) {
+      alRechazarSesion?.();
+    }
+
+    return Promise.reject(apiError);
+  },
 );

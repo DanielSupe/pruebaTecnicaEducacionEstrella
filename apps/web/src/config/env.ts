@@ -26,10 +26,25 @@ const envSchema = z.object({
       },
       { error: "VITE_API_BASE_URL debe empezar por http:// o https://" },
     ),
+
+  // Identificadores del directorio de usuarios. No son secretos: viajan en el
+  // paquete que descarga el navegador. Pero sin valor por omision, porque
+  // apuntar al directorio equivocado parece funcionar hasta que no funciona.
+  VITE_COGNITO_USER_POOL_ID: z
+    .string({ error: "VITE_COGNITO_USER_POOL_ID es obligatoria" })
+    .trim()
+    .min(1, "VITE_COGNITO_USER_POOL_ID no puede estar vacia"),
+
+  VITE_COGNITO_CLIENT_ID: z
+    .string({ error: "VITE_COGNITO_CLIENT_ID es obligatoria" })
+    .trim()
+    .min(1, "VITE_COGNITO_CLIENT_ID no puede estar vacia"),
 });
 
 export type WebConfig = {
   apiBaseUrl: string;
+  cognitoUserPoolId: string;
+  cognitoClientId: string;
 };
 
 export function loadConfig(source: Record<string, unknown> = import.meta.env): WebConfig {
@@ -45,5 +60,7 @@ export function loadConfig(source: Record<string, unknown> = import.meta.env): W
   return {
     // Se quita la barra final para no acabar construyendo rutas con doble barra.
     apiBaseUrl: parsed.data.VITE_API_BASE_URL.replace(/\/+$/, ""),
+    cognitoUserPoolId: parsed.data.VITE_COGNITO_USER_POOL_ID,
+    cognitoClientId: parsed.data.VITE_COGNITO_CLIENT_ID,
   };
 }

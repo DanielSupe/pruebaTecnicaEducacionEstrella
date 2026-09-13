@@ -3,7 +3,7 @@ import {
   MAX_VIDEO_BYTES,
   VIDEO_CONTENT_TYPES,
   extensionForContentType,
-  videoMetadataSchema,
+  videoFileSchema,
 } from "./video.js";
 
 const validMetadata = { contentType: "video/mp4", sizeBytes: 1024 } as const;
@@ -17,33 +17,33 @@ describe("MAX_VIDEO_BYTES", () => {
   });
 });
 
-describe("videoMetadataSchema: tipo de contenido", () => {
+describe("videoFileSchema: tipo de contenido", () => {
   it.each(Object.keys(VIDEO_CONTENT_TYPES))("acepta %s", (contentType) => {
-    expect(videoMetadataSchema.safeParse({ ...validMetadata, contentType }).success).toBe(true);
+    expect(videoFileSchema.safeParse({ ...validMetadata, contentType }).success).toBe(true);
   });
 
   it.each(["video/avi", "video/quicktime", "application/pdf", "", "VIDEO/MP4"])(
     "rechaza %s",
     (contentType) => {
-      expect(videoMetadataSchema.safeParse({ ...validMetadata, contentType }).success).toBe(false);
+      expect(videoFileSchema.safeParse({ ...validMetadata, contentType }).success).toBe(false);
     },
   );
 
   it("explica en español los formatos aceptados", () => {
-    const result = videoMetadataSchema.safeParse({ ...validMetadata, contentType: "video/avi" });
+    const result = videoFileSchema.safeParse({ ...validMetadata, contentType: "video/avi" });
     expect(result.error?.issues[0]?.message).toBe("El video debe estar en formato .mp4 o .webm");
   });
 });
 
-describe("videoMetadataSchema: tamaño", () => {
+describe("videoFileSchema: tamaño", () => {
   it("acepta un video que pesa exactamente el límite", () => {
     // El límite es inclusivo: un video de justo 200 MiB es válido.
-    const result = videoMetadataSchema.safeParse({ ...validMetadata, sizeBytes: MAX_VIDEO_BYTES });
+    const result = videoFileSchema.safeParse({ ...validMetadata, sizeBytes: MAX_VIDEO_BYTES });
     expect(result.success).toBe(true);
   });
 
   it("rechaza un video que pesa un solo byte más que el límite", () => {
-    const result = videoMetadataSchema.safeParse({
+    const result = videoFileSchema.safeParse({
       ...validMetadata,
       sizeBytes: MAX_VIDEO_BYTES + 1,
     });
@@ -51,7 +51,7 @@ describe("videoMetadataSchema: tamaño", () => {
   });
 
   it.each([0, -1, 1.5, Number.NaN])("rechaza el tamaño %s", (sizeBytes) => {
-    expect(videoMetadataSchema.safeParse({ ...validMetadata, sizeBytes }).success).toBe(false);
+    expect(videoFileSchema.safeParse({ ...validMetadata, sizeBytes }).success).toBe(false);
   });
 });
 

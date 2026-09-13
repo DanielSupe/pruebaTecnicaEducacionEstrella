@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { videoMetadataSchema, videoContentTypeSchema } from "./video.js";
+import { videoContentTypeSchema, uploadAuthorizationSchema } from "./video.js";
 
 /**
  * Estados de una solicitud.
@@ -57,7 +57,10 @@ export type ApplicationFields = z.infer<typeof applicationFieldsSchema>;
  */
 export const createApplicationInputSchema = z.strictObject({
   ...applicationFieldsSchema.shape,
-  video: videoMetadataSchema,
+  // Solo el tipo de contenido: hace falta para construir la ruta del objeto y
+  // para fijarlo en la politica firmada. El tamano no se declara — lo acota esa
+  // misma politica, y un numero que envia el cliente puede mentir.
+  videoContentType: videoContentTypeSchema,
 });
 
 export type CreateApplicationInput = z.infer<typeof createApplicationInputSchema>;
@@ -73,9 +76,20 @@ export const applicationSchema = z.object({
   applicationId: z.string().min(1),
   status: applicationStatusSchema,
   videoContentType: videoContentTypeSchema,
-  videoSizeBytes: z.int().positive(),
+  // Opcional: el tamano real se conoce al verificar el objeto almacenado, en la
+  // confirmacion. Antes de eso no hay nada que registrar.
+  videoSizeBytes: z.int().positive().optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
 
 export type Application = z.infer<typeof applicationSchema>;
+
+/** Respuesta de la creacion de una solicitud. */
+export const createApplicationResponseSchema = z.object({
+  applicationId: z.string().min(1),
+  status: applicationStatusSchema,
+  upload: uploadAuthorizationSchema,
+});
+
+export type CreateApplicationResponse = z.infer<typeof createApplicationResponseSchema>;

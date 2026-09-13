@@ -6,6 +6,9 @@ import { errorHandler, notFoundHandler } from "./middleware/error-handler.js";
 import { authenticate, type AccessTokenVerifier } from "./middleware/authenticate.js";
 import { healthRouter } from "./routes/health.js";
 import { createMeRouter } from "./routes/me.js";
+import { createApplicationsRouter } from "./features/applications/routes.js";
+import { createApplicationsRepository } from "./features/applications/repository.js";
+import { createUploadAuthorizer } from "./features/applications/uploads.js";
 
 /** Cuerpo maximo aceptado. La API nunca recibe archivos: el video va directo a S3
  *  con una politica firmada, asi que el cuerpo mas grande son unos cientos de bytes
@@ -18,10 +21,12 @@ const JSON_BODY_LIMIT = "16kb";
  * Esa separacion es lo que permite que las pruebas la ejerciten sin abrir sockets,
  * y lo que hara trivial montarla sobre Lambda mas adelante.
  */
-export function createApp(
-  config: Pick<AppConfig, "corsAllowedOrigins">,
-  verifier: AccessTokenVerifier,
-): Express {
+export type AppDependencies = Pick<
+  AppConfig,
+  "corsAllowedOrigins" | "awsRegion" | "applicationsTableName" | "videosBucketName"
+>;
+
+export function createApp(config: AppDependencies, verifier: AccessTokenVerifier): Express {
   const app = express();
 
   app.disable("x-powered-by");
@@ -34,7 +39,16 @@ export function createApp(
   app.use("/api/v1", healthRouter);
 
   // El middleware se monta por grupo de rutas, nunca con app.use global.
-  app.use("/api/v1", createMeRouter(authenticate(verifier)));
+  const autenticar = authenticate(verifier);
+  app.use("/api/v1", createMeRouter(autenticar));
+  app.use(
+    "/api/v1",
+    createApplicationsRouter(
+      autenticar,
+      createApplicationsRepository(config),
+      createUploadAuthorizer(config),
+    ),
+  );
 
   // El orden importa: primero las rutas, luego el 404, y el manejador de errores
   // al final. Montarlo antes lo dejaria sin efecto.

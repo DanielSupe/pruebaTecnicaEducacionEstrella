@@ -4,7 +4,12 @@ import express from "express";
 import { createApp } from "./app.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
-const config = { corsAllowedOrigins: ["http://localhost:5173"] };
+const config = {
+  corsAllowedOrigins: ["http://localhost:5173"],
+  awsRegion: "us-east-1",
+  applicationsTableName: "tabla-de-prueba",
+  videosBucketName: "bucket-de-prueba",
+};
 
 // Doble del verificador: estas pruebas son del contrato de la app, no de la
 // verificacion de tokens. Esa vive en authenticate.test.ts.

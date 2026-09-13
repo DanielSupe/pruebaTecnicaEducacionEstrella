@@ -36,7 +36,15 @@ export const videoContentTypeSchema = z.enum(VIDEO_CONTENT_TYPE_VALUES, {
   error: "El video debe estar en formato .mp4 o .webm",
 });
 
-export const videoMetadataSchema = z.strictObject({
+/**
+ * Valida el archivo que el usuario acaba de elegir, ANTES de subirlo.
+ *
+ * Lo usa el navegador para rechazar un archivo inaceptable sin gastar ancho de
+ * banda, como pide el enunciado. NO viaja a la API: el tamaño declarado por un
+ * cliente no demuestra nada, y el limite real lo impone la politica de subida
+ * firmada, que el cliente no puede alterar.
+ */
+export const videoFileSchema = z.strictObject({
   contentType: videoContentTypeSchema,
   sizeBytes: z
     .int({ error: "El tamaño del video debe ser un número entero de bytes" })
@@ -44,7 +52,7 @@ export const videoMetadataSchema = z.strictObject({
     .max(MAX_VIDEO_BYTES, `El video no puede superar los ${String(MAX_VIDEO_MB)} MB`),
 });
 
-export type VideoMetadata = z.infer<typeof videoMetadataSchema>;
+export type VideoFile = z.infer<typeof videoFileSchema>;
 
 /**
  * Extensión con la que se almacena un video.
@@ -56,3 +64,20 @@ export type VideoMetadata = z.infer<typeof videoMetadataSchema>;
 export function extensionForContentType(contentType: VideoContentType): VideoExtension {
   return VIDEO_CONTENT_TYPES[contentType];
 }
+
+/**
+ * Autorizacion de subida devuelta por la API.
+ *
+ * Su forma la dicta el generador de politicas firmadas del SDK: una direccion a
+ * la que enviar el formulario y un conjunto de campos que deben acompanar al
+ * archivo. Se definio aqui al tenerla delante, no antes, para no adivinarla.
+ *
+ * El archivo va SIEMPRE en ultimo lugar del formulario: el almacenamiento
+ * ignora todo lo que venga despues.
+ */
+export const uploadAuthorizationSchema = z.object({
+  url: z.url(),
+  fields: z.record(z.string(), z.string()),
+});
+
+export type UploadAuthorization = z.infer<typeof uploadAuthorizationSchema>;

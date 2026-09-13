@@ -7,7 +7,7 @@ const validInput = {
   institution: "Universidad Nacional de Colombia",
   program: "Ingeniería de Sistemas",
   amount: 8_500_000,
-  video: { contentType: "video/mp4", sizeBytes: 15_728_640 },
+  videoContentType: "video/mp4",
 };
 
 describe("createApplicationInputSchema", () => {
@@ -15,7 +15,7 @@ describe("createApplicationInputSchema", () => {
     expect(createApplicationInputSchema.safeParse(validInput).success).toBe(true);
   });
 
-  it.each(["fullName", "idDocument", "institution", "program", "amount", "video"])(
+  it.each(["fullName", "idDocument", "institution", "program", "amount", "videoContentType"])(
     "rechaza la solicitud si falta %s",
     (field) => {
       const { [field]: _omitted, ...incomplete } = validInput as Record<string, unknown>;
@@ -68,6 +68,30 @@ describe("documento de identidad", () => {
     expect(createApplicationInputSchema.safeParse({ ...validInput, idDocument }).success).toBe(
       false,
     );
+  });
+});
+
+describe("tipo de contenido del video", () => {
+  it.each(["video/mp4", "video/webm"])("acepta %s", (videoContentType) => {
+    expect(
+      createApplicationInputSchema.safeParse({ ...validInput, videoContentType }).success,
+    ).toBe(true);
+  });
+
+  it.each(["video/avi", "application/pdf", ""])("rechaza %s", (videoContentType) => {
+    expect(
+      createApplicationInputSchema.safeParse({ ...validInput, videoContentType }).success,
+    ).toBe(false);
+  });
+
+  it("no acepta un tamaño declarado: el limite lo impone la politica firmada", () => {
+    // Si esto pasara, el cliente estaria enviando un numero que no demuestra
+    // nada y que ademas hay que mantener sincronizado con el limite real.
+    const resultado = createApplicationInputSchema.safeParse({
+      ...validInput,
+      videoSizeBytes: 1024,
+    });
+    expect(resultado.success).toBe(false);
   });
 });
 

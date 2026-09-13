@@ -44,6 +44,11 @@ BUCKET_NAME="$(value videos_bucket_name)"
 USER_POOL_ID="$(value cognito_user_pool_id)"
 CLIENT_ID="$(value cognito_user_pool_client_id)"
 
+# Origenes del frontend en desarrollo. No sale de Terraform porque no es un
+# identificador de infraestructura, sino una decision de configuracion local; el
+# valor de produccion lo inyecta el despliegue.
+WEB_DEV_ORIGIN="${WEB_DEV_ORIGIN:-http://localhost:5173}"
+
 # Las variables de la API no llevan prefijo: nunca salen del servidor.
 cat > "$REPO_ROOT/apps/api/.env" <<EOF
 # Generado por scripts/gen-env.sh a partir de las salidas de Terraform.
@@ -53,6 +58,7 @@ APPLICATIONS_TABLE_NAME=$TABLE_NAME
 VIDEOS_BUCKET_NAME=$BUCKET_NAME
 COGNITO_USER_POOL_ID=$USER_POOL_ID
 COGNITO_CLIENT_ID=$CLIENT_ID
+CORS_ALLOWED_ORIGINS=$WEB_DEV_ORIGIN
 EOF
 
 # Las del frontend llevan prefijo VITE_ porque Vite solo expone al navegador las

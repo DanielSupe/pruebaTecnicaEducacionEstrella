@@ -32,14 +32,20 @@ while IFS= read -r f; do
 done <<< "$files"
 
 # 2. Contenido que parece una credencial (solo líneas añadidas)
-patterns='(AKIA|ASIA)[0-9A-Z]{16}
+# Se define con heredoc y no con comillas simples: los patrones contienen comillas
+# simples, y dentro de una cadena entrecomillada cerrarian la cadena a medias.
+patterns=$(cat <<'PATTERNS'
+(AKIA|ASIA)[0-9A-Z]{16}
 aws_secret_access_key
 -----BEGIN [A-Z ]*PRIVATE KEY-----
 gh[pousr]_[A-Za-z0-9]{20,}
 sk-[A-Za-z0-9_-]{20,}
 xox[abprs]-[A-Za-z0-9-]{10,}
 eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}
-(secret|token|password|passwd|api[_-]?key|client[_-]?secret)[[:space:]]*[:=][[:space:]]*.?[A-Za-z0-9/+_-]{12,}'
+(secret|token|password|passwd|api[_-]?key|client[_-]?secret)["']?[[:space:]]*[:=][[:space:]]*["'][A-Za-z0-9/+_=-]{12,}
+^\+?[A-Z][A-Z0-9_]*(SECRET|TOKEN|PASSWORD|PASSWD|APIKEY|API_KEY)[A-Z0-9_]*=[^[:space:]"'$]{12,}
+PATTERNS
+)
 
 added=$(git diff --cached --unified=0 | grep -E '^\+' | grep -vE '^\+\+\+' || true)
 noise='process\.env|import\.meta\.env|<your|your-|changeme|placeholder|xxxx|\$\{|\$\(|dotenv'

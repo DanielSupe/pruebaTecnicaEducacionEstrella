@@ -42,7 +42,14 @@ export const applicationFieldsSchema = z.object({
   // z.int() ya acota al mayor entero que JavaScript representa con exactitud, que es
   // el único tope real: más allá, el valor no sobreviviría intacto al almacenamiento.
   amount: z
-    .int({ error: "El monto solicitado debe ser un número entero, sin decimales" })
+    .int({
+      // El mensaje distingue ausencia de invalidez: decirle "debe ser un numero
+      // entero, sin decimales" a quien no ha escrito nada no ayuda a corregir.
+      error: (issue) =>
+        issue.input === undefined
+          ? "El monto solicitado es obligatorio"
+          : "El monto solicitado debe ser un número entero, sin decimales",
+    })
     .positive("El monto solicitado debe ser mayor que cero"),
 });
 

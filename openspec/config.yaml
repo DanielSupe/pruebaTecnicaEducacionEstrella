@@ -11,8 +11,10 @@ context: |
   (esquemas Zod compartidos) e infra/ (Terraform).
 
   Frontend: React + Vite + TypeScript (SPA), Tailwind CSS, TanStack Router (rutas
-  protegidas con beforeLoad), TanStack Query, TanStack Form, Zod, aws-amplify (solo
-  aws-amplify/auth) y axios para la subida con indicador de progreso.
+  protegidas con beforeLoad), TanStack Query, Zod, aws-amplify (solo aws-amplify/auth),
+  axios para la subida con indicador de progreso y SweetAlert2 (siempre a traves del
+  envoltorio propio) para las ventanas emergentes. Los formularios usan estado propio
+  y un hook compartido, no una libreria de formularios.
 
   Backend: Node.js + Express + TypeScript, API REST. Zod para validar body, params
   y query. Middleware centralizado de errores con clases de error personalizadas y

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { http, type ApiError } from "../lib/http.js";
 
 type EstadoApi = {
@@ -23,6 +24,13 @@ export function HomePage() {
         <p className="mt-2 text-sm text-slate-600">
           Registra tu solicitud y adjunta el video de entrevista.
         </p>
+
+        <Link
+          to="/solicitudes/nueva"
+          className="mt-6 inline-flex items-center justify-center rounded-md bg-brand px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-brand-hover focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
+        >
+          Nueva solicitud
+        </Link>
       </div>
 
       <section className="rounded-lg border border-slate-200 bg-white p-6">

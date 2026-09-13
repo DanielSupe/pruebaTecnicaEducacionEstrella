@@ -8,6 +8,7 @@ import {
 import type { QueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/AppShell.js";
 import { HomePage } from "./HomePage.js";
+import { NewApplicationPage } from "./NewApplicationPage.js";
 import { LoginPage } from "./LoginPage.js";
 import { SignUpPage } from "./SignUpPage.js";
 import { sessionQuery } from "../lib/session.js";
@@ -80,8 +81,14 @@ const signUpRoute = createRoute({
   component: SignUpPage,
 });
 
+const newApplicationRoute = createRoute({
+  getParentRoute: () => privateRoute,
+  path: "/solicitudes/nueva",
+  component: NewApplicationPage,
+});
+
 const routeTree = rootRoute.addChildren([
-  privateRoute.addChildren([homeRoute]),
+  privateRoute.addChildren([homeRoute, newApplicationRoute]),
   publicRoute.addChildren([loginRoute, signUpRoute]),
 ]);
 

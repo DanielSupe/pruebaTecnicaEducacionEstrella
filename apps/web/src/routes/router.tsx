@@ -7,7 +7,7 @@ import {
 } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
 import { AppShell } from "../components/AppShell.js";
-import { HomePage } from "./HomePage.js";
+import { ApplicationsPage } from "./ApplicationsPage.js";
 import { NewApplicationPage } from "./NewApplicationPage.js";
 import { LoginPage } from "./LoginPage.js";
 import { SignUpPage } from "./SignUpPage.js";
@@ -49,10 +49,10 @@ const privateRoute = createRoute({
   },
 });
 
-const homeRoute = createRoute({
+const applicationsRoute = createRoute({
   getParentRoute: () => privateRoute,
   path: "/",
-  component: HomePage,
+  component: ApplicationsPage,
 });
 
 /** Rama publica: quien ya tiene sesion no deberia estar aqui. */
@@ -88,7 +88,7 @@ const newApplicationRoute = createRoute({
 });
 
 const routeTree = rootRoute.addChildren([
-  privateRoute.addChildren([homeRoute, newApplicationRoute]),
+  privateRoute.addChildren([applicationsRoute, newApplicationRoute]),
   publicRoute.addChildren([loginRoute, signUpRoute]),
 ]);
 

@@ -62,19 +62,44 @@ otra: si necesitas agrupar dentro, usa espacio y un título.
 
 ## Ventanas emergentes
 
-Se usa **SweetAlert2**, tematizado con los tokens de este sistema. La librería aporta lo difícil
-de un modal —trampa de foco, cierre con `Esc`, atributos ARIA— que es justo lo que suele hacerse
-mal a mano.
+Para los avisos se usa **SweetAlert2**, tematizado con los tokens de este sistema. La librería
+aporta lo difícil de un modal —trampa de foco, cierre con `Esc`, atributos ARIA— que es justo lo
+que suele hacerse mal a mano. Para las ventanas con contenido, ver el apartado siguiente.
 
 El precio es que su aspecto por omisión es el más reconocible de la web: tarjeta blanca con un
 icono grande animado. **Sin tematizar, delata la librería.** Por eso pasa siempre por el
 envoltorio del proyecto, nunca se llama `Swal.fire` directamente desde una pantalla.
+
+### Aviso o ventana con contenido
+
+Son dos cosas distintas y no se construyen igual.
+
+Un **aviso** dice algo y espera un sí o un no: confirmar, informar de un error, informar de un
+éxito. Va siempre por `lib/dialogs.ts`, es decir SweetAlert2. No hay excepción.
+
+Una **ventana con contenido** lleva estado vivo dentro: un selector de archivo, una barra que
+avanza, un botón que aborta una petición en curso, un reproductor. Esa va sobre el `<dialog>` del
+navegador, con el componente `components/Modal.tsx`.
+
+El motivo no es preferencia: SweetAlert2 recibe HTML, no componentes. Meter React dentro obliga a
+montar un portal en su contenedor y a sincronizar dos ciclos de vida, justo en la parte que más
+cuesta afinar. Y el elemento nativo ya da lo que se le agradece a la librería — trampa de foco,
+cierre con `Esc`, `aria-modal`, fondo inerte.
+
+Lo que toda ventana con contenido debe cumplir:
+
+- Devolver el foco al elemento que la abrió al cerrarse.
+- Interceptar el cierre en lugar de dejar que el navegador lo haga a secas: si hay una operación
+  en curso que se perdería, se confirma antes.
+- El error de lo que ocurre dentro se explica **dentro**, con su reintento ahí. No se cierra la
+  ventana para abrir un aviso encima.
 
 ### Cuándo sí y cuándo no
 
 | Situación | Qué usar |
 |---|---|
 | Confirmar algo consecuente: cerrar sesión, abandonar un formulario, cancelar una subida | Modal de confirmación |
+| Subir un archivo, ver un vídeo, cualquier cosa con estado vivo dentro | **Ventana con contenido**, sobre `<dialog>` |
 | Falló una acción que el usuario lanzó: enviar el formulario, subir el video | Modal de error, **con el reintento dentro** |
 | No cargó el contenido de una vista: la lista de solicitudes | **En línea**, no modal. Ver "Estados" |
 | Una operación terminó bien: solicitud enviada | Modal de éxito, breve |

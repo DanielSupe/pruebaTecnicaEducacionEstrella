@@ -23,7 +23,13 @@ export function Sidebar({ onCerrarSesion }: { onCerrarSesion: () => void }) {
   return (
     <aside className="flex flex-col border-b border-white/10 bg-ink lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:border-r lg:border-b-0">
       <div className="flex items-center justify-between gap-4 px-4 py-4 lg:px-6">
-        <Link to="/" className="inline-flex items-center" aria-label="Educación Estrella, inicio">
+        <Link
+          to="/"
+          // Es el PRIMER punto de tabulacion de la pantalla: sin anillo, quien
+          // navega con teclado empieza sin saber donde esta.
+          className="inline-flex items-center rounded-md focus-visible:ring-2 focus-visible:ring-brand-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ink focus-visible:outline-none"
+          aria-label="Educación Estrella, inicio"
+        >
           <img
             src={logotipo}
             alt="Educación Estrella"

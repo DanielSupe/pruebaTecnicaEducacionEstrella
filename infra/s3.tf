@@ -60,6 +60,9 @@ resource "aws_s3_bucket_cors_configuration" "videos" {
     allowed_origins = concat(
       var.allowed_upload_origins,
       ["https://${aws_cloudfront_distribution.web.domain_name}"],
+      # El dominio propio, si lo hay. Olvidarlo romperia SOLO la subida del video
+      # y SOLO desde ese dominio: el resto de la aplicacion pareceria correcta.
+      var.web_domain == "" ? [] : ["https://${var.web_domain}"],
     )
     allowed_headers = ["*"]
     expose_headers  = ["ETag", "Location"]

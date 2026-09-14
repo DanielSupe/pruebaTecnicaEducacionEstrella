@@ -53,3 +53,14 @@ output "api_gateway_url" {
   description = "Direccion directa de la puerta de enlace. El navegador no la usa: solo para diagnostico."
   value       = aws_apigatewayv2_api.api.api_endpoint
 }
+
+# El registro que hay que anadir en el proveedor de DNS para validar el
+# certificado. Se publica como salida para no tener que leerlo del estado.
+output "certificate_validation_record" {
+  description = "Registro CNAME de validacion del certificado. Vacio si no hay dominio propio."
+  value = var.web_domain == "" ? null : {
+    nombre = one(aws_acm_certificate.web[0].domain_validation_options).resource_record_name
+    tipo   = one(aws_acm_certificate.web[0].domain_validation_options).resource_record_type
+    valor  = one(aws_acm_certificate.web[0].domain_validation_options).resource_record_value
+  }
+}

@@ -82,3 +82,24 @@ variable "videos_bucket_force_destroy" {
   type        = bool
   default     = false
 }
+
+# Dominio propio para servir la aplicacion. Vacio significa "sin dominio propio":
+# se usa el que genera la distribucion y todo funciona igual.
+#
+# Es opcional a proposito. Quien clone este repositorio no tiene por que poseer un
+# dominio, y exigirselo convertiria el despliegue en algo que solo su autor puede
+# reproducir.
+variable "web_domain" {
+  description = "Subdominio propio para la aplicacion. Vacio para usar el dominio de la distribucion."
+  type        = string
+  default     = ""
+
+  validation {
+    # El vertice de un dominio no admite CNAME: lo prohibe la especificacion del
+    # DNS, porque ahi conviven los registros de autoridad. Haria falta un registro
+    # ALIAS, que es una extension propietaria que la mayoria de registradores no
+    # ofrece. Se exige un subdominio para no fallar a mitad del despliegue.
+    condition     = var.web_domain == "" || length(split(".", var.web_domain)) >= 3
+    error_message = "web_domain debe ser un subdominio (app.ejemplo.com), no el dominio raiz."
+  }
+}

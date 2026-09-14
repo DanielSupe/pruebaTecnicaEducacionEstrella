@@ -138,6 +138,13 @@ resource "aws_cloudfront_distribution" "web" {
   # distribuir a regiones que nadie va a usar.
   price_class = "PriceClass_100"
 
+  # El dominio propio se SUMA: el que genera la distribucion sigue sirviendo, lo
+  # que deja una direccion de reserva si el DNS tarda en propagarse.
+  #
+  # Un nombre que no figure aqui se rechaza, y eso es lo que impide que alguien
+  # apunte su dominio a esta distribucion y sirva nuestra aplicacion bajo su marca.
+  aliases = var.web_domain == "" ? [] : [var.web_domain]
+
   origin {
     origin_id                = "spa"
     domain_name              = aws_s3_bucket.web.bucket_regional_domain_name
@@ -208,10 +215,14 @@ resource "aws_cloudfront_distribution" "web" {
     }
   }
 
-  # Dominio por omision de la distribucion: sin certificado propio ni DNS que
-  # validar en el camino critico del ultimo dia.
+  # Sin dominio propio se usa el certificado de la distribucion; con el, el nuestro.
+  # sni-only y no una direccion IP dedicada: esta ultima cuesta cientos de dolares
+  # al mes y solo hace falta para clientes muy antiguos que aqui no existen.
   viewer_certificate {
-    cloudfront_default_certificate = true
+    cloudfront_default_certificate = var.web_domain == ""
+    acm_certificate_arn            = var.web_domain == "" ? null : aws_acm_certificate_validation.web[0].certificate_arn
+    ssl_support_method             = var.web_domain == "" ? null : "sni-only"
+    minimum_protocol_version       = var.web_domain == "" ? null : "TLSv1.2_2021"
   }
 }
 

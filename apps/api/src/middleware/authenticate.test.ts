@@ -3,7 +3,12 @@ import request from "supertest";
 import { createApp } from "../app.js";
 import type { AccessTokenVerifier } from "./authenticate.js";
 
-const config = { corsAllowedOrigins: ["http://localhost:5173"] };
+const config = {
+  corsAllowedOrigins: ["http://localhost:5173"],
+  awsRegion: "us-east-1",
+  applicationsTableName: "tabla-de-prueba",
+  videosBucketName: "bucket-de-prueba",
+};
 
 const SUB = "140864d8-8011-701e-a19d-f2b91bb4932b";
 
@@ -26,7 +31,7 @@ describe("rutas protegidas", () => {
 
     expect(res.status).toBe(401);
     expect(res.body).toEqual({
-      error: { code: "UNAUTHORIZED", message: "Credenciales ausentes o invalidas." },
+      error: { code: "UNAUTHORIZED", message: "Credenciales ausentes o inválidas." },
     });
   });
 

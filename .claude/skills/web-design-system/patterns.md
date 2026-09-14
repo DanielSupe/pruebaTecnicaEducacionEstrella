@@ -60,17 +60,88 @@ Cuerpo:   p-6
 Sin sombra salvo que la card flote sobre contenido (menú, popover). Nunca una card dentro de
 otra: si necesitas agrupar dentro, usa espacio y un título.
 
-## Modal
+## Ventanas emergentes
+
+Para los avisos se usa **SweetAlert2**, tematizado con los tokens de este sistema. La librería
+aporta lo difícil de un modal —trampa de foco, cierre con `Esc`, atributos ARIA— que es justo lo
+que suele hacerse mal a mano. Para las ventanas con contenido, ver el apartado siguiente.
+
+El precio es que su aspecto por omisión es el más reconocible de la web: tarjeta blanca con un
+icono grande animado. **Sin tematizar, delata la librería.** Por eso pasa siempre por el
+envoltorio del proyecto, nunca se llama `Swal.fire` directamente desde una pantalla.
+
+### Aviso o ventana con contenido
+
+Son dos cosas distintas y no se construyen igual.
+
+Un **aviso** dice algo y espera un sí o un no: confirmar, informar de un error, informar de un
+éxito. Va siempre por `lib/dialogs.ts`, es decir SweetAlert2. No hay excepción.
+
+Una **ventana con contenido** lleva estado vivo dentro: un selector de archivo, una barra que
+avanza, un botón que aborta una petición en curso, un reproductor. Esa va sobre el `<dialog>` del
+navegador, con el componente `components/Modal.tsx`.
+
+El motivo no es preferencia: SweetAlert2 recibe HTML, no componentes. Meter React dentro obliga a
+montar un portal en su contenedor y a sincronizar dos ciclos de vida, justo en la parte que más
+cuesta afinar. Y el elemento nativo ya da lo que se le agradece a la librería — trampa de foco,
+cierre con `Esc`, `aria-modal`, fondo inerte.
+
+Lo que toda ventana con contenido debe cumplir:
+
+- Devolver el foco al elemento que la abrió al cerrarse.
+- Interceptar el cierre en lugar de dejar que el navegador lo haga a secas: si hay una operación
+  en curso que se perdería, se confirma antes.
+- El error de lo que ocurre dentro se explica **dentro**, con su reintento ahí. No se cierra la
+  ventana para abrir un aviso encima.
+
+### Cuándo sí y cuándo no
+
+| Situación | Qué usar |
+|---|---|
+| Confirmar algo consecuente: cerrar sesión, abandonar un formulario, cancelar una subida | Modal de confirmación |
+| Subir un archivo, ver un vídeo, cualquier cosa con estado vivo dentro | **Ventana con contenido**, sobre `<dialog>` |
+| Falló una acción que el usuario lanzó: enviar el formulario, subir el video | Modal de error, **con el reintento dentro** |
+| No cargó el contenido de una vista: la lista de solicitudes | **En línea**, no modal. Ver "Estados" |
+| Una operación terminó bien: solicitud enviada | Modal de éxito, breve |
+| **Un campo del formulario es inválido** | **Nunca un modal.** Bajo el campo, siempre |
+| Aviso que no interrumpe: cambios guardados | Nada, o un aviso en la propia pantalla |
+
+La regla que separa los dos mundos: un modal **interrumpe**. Si lo que tienes que decir no
+justifica detener al usuario, no es un modal. Un error de validación no lo justifica — además,
+obliga a cerrarlo para ver el campo que hay que corregir.
+
+### Reglas de uso
+
+- **El modal de error lleva su acción dentro.** Si obliga a cerrarlo y buscar el botón de
+  reintentar después, cumple la letra del requisito y no su intención.
+- **Nunca dos modales seguidos.** Si al confirmar sale otro para decir que salió bien, el usuario
+  cierra dos ventanas para una sola acción. Cuando la acción cambia de pantalla, la pantalla
+  nueva ya es la confirmación.
+- **El botón que confirma algo destructivo es el destructivo**, y el foco arranca en cancelar.
+- **Sin los iconos animados por omisión.** Son la parte que más delata la librería. Si hace falta
+  un icono, uno sobrio y quieto.
+- Los textos van en español y dicen qué pasó y qué hacer, no "Error" ni "Oops...".
+
+### Tematización
+
+El envoltorio vive en `src/lib/dialogs.ts` y expone funciones con nombre de intención
+(`confirmar`, `avisarError`, `avisarExito`), no la API de la librería. Cada parte recibe nuestras
+clases por `customClass`:
 
 ```
-Fondo:   fixed inset-0 bg-slate-900/50
-Panel:   w-full max-w-lg rounded-lg bg-white p-6 shadow-lg
+popup:       rounded-lg bg-white p-6 shadow-lg
+title:       text-base font-semibold text-slate-900
+htmlContainer: text-sm text-slate-600
+confirmButton: (las clases del botón primario o destructivo, según el caso)
+cancelButton:  (las clases del botón secundario)
+actions:     flex justify-end gap-3
 ```
 
-Requisitos, no adornos: cierra con `Esc`, el foco queda atrapado dentro mientras está abierto y
-vuelve al elemento que lo abrió al cerrarse. Si un modal no cumple eso, es una trampa para quien
-navegue con teclado. Úsalo solo para confirmar algo destructivo o para una tarea corta; para un
-formulario largo, una página.
+Con `buttonsStyling: false`, para que la librería no imponga sus propios estilos de botón.
+
+Si mañana se cambia de librería, se reescribe este archivo y ninguna pantalla se entera. Eso es
+lo que justifica el envoltorio: no es una capa por si acaso, es el único sitio donde la librería
+es visible.
 
 ## Tabla
 
@@ -117,9 +188,18 @@ va dentro del botón.
 en `text-sm text-slate-600` que explique **qué hacer**, y si procede un botón primario. Nunca
 una tabla vacía sin explicación.
 
-**Error.** Explica qué falló y ofrece una salida: `rounded-md border border-danger bg-danger-bg
-p-4 text-sm`, con un botón de reintentar si la acción se puede repetir. Nunca se muestra el
-error técnico crudo.
+**Error.** Explica qué falló y ofrece una salida. Nunca se muestra el error técnico crudo.
+
+Dónde se muestra depende de quién lo provocó:
+
+- **Al cargar una vista** (la lista no llega): **en línea**, donde iría el contenido —
+  `rounded-md border border-danger bg-danger-bg p-4 text-sm` con un botón de reintentar. Un modal
+  sobre una página vacía deja al usuario cerrando una ventana para mirar la nada.
+- **Al ejecutar una acción que el usuario inició** (enviar el formulario, subir el video): en
+  **modal**, porque hay alguien esperando una respuesta a algo que acaba de hacer. Con el
+  reintento dentro.
+
+Un error de validación de campo no es ninguno de los dos: va bajo su campo.
 
 **Éxito.** Breve y no bloqueante: `border border-success bg-success-bg`. Si la acción cambia de
 pantalla, la propia pantalla nueva es la confirmación — no hace falta un cartel además.

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { videoMetadataSchema, videoContentTypeSchema } from "./video.js";
+import { videoContentTypeSchema, uploadAuthorizationSchema } from "./video.js";
 
 /**
  * Estados de una solicitud.
@@ -42,7 +42,14 @@ export const applicationFieldsSchema = z.object({
   // z.int() ya acota al mayor entero que JavaScript representa con exactitud, que es
   // el único tope real: más allá, el valor no sobreviviría intacto al almacenamiento.
   amount: z
-    .int({ error: "El monto solicitado debe ser un número entero, sin decimales" })
+    .int({
+      // El mensaje distingue ausencia de invalidez: decirle "debe ser un numero
+      // entero, sin decimales" a quien no ha escrito nada no ayuda a corregir.
+      error: (issue) =>
+        issue.input === undefined
+          ? "El monto solicitado es obligatorio"
+          : "El monto solicitado debe ser un número entero, sin decimales",
+    })
     .positive("El monto solicitado debe ser mayor que cero"),
 });
 
@@ -57,7 +64,10 @@ export type ApplicationFields = z.infer<typeof applicationFieldsSchema>;
  */
 export const createApplicationInputSchema = z.strictObject({
   ...applicationFieldsSchema.shape,
-  video: videoMetadataSchema,
+  // Solo el tipo de contenido: hace falta para construir la ruta del objeto y
+  // para fijarlo en la politica firmada. El tamano no se declara — lo acota esa
+  // misma politica, y un numero que envia el cliente puede mentir.
+  videoContentType: videoContentTypeSchema,
 });
 
 export type CreateApplicationInput = z.infer<typeof createApplicationInputSchema>;
@@ -73,9 +83,50 @@ export const applicationSchema = z.object({
   applicationId: z.string().min(1),
   status: applicationStatusSchema,
   videoContentType: videoContentTypeSchema,
-  videoSizeBytes: z.int().positive(),
+  // Opcional: el tamano real se conoce al verificar el objeto almacenado, en la
+  // confirmacion. Antes de eso no hay nada que registrar.
+  videoSizeBytes: z.int().positive().optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
 
 export type Application = z.infer<typeof applicationSchema>;
+
+/** Respuesta de la creacion de una solicitud. */
+export const createApplicationResponseSchema = z.object({
+  applicationId: z.string().min(1),
+  status: applicationStatusSchema,
+  upload: uploadAuthorizationSchema,
+});
+
+export type CreateApplicationResponse = z.infer<typeof createApplicationResponseSchema>;
+
+/**
+ * Parametros de la consulta del listado.
+ *
+ * Aqui SI se convierte desde texto, al contrario que en el cuerpo de la
+ * creacion: una cadena de consulta solo puede transportar texto, asi que no hay
+ * nada que relajar. En un cuerpo JSON aceptar "5000" donde se espera un numero
+ * si relajaria la validacion, y por eso alli no se hace.
+ */
+export const listApplicationsQuerySchema = z.object({
+  limit: z.coerce
+    .number({ error: "El límite debe ser un número" })
+    .int("El límite debe ser un número entero")
+    .min(1, "El límite debe ser al menos 1")
+    .max(50, "El límite no puede superar 50")
+    .default(20),
+
+  // Opaco a proposito: el cliente lo devuelve tal cual sin interpretarlo.
+  cursor: z.string().min(1).optional(),
+});
+
+export type ListApplicationsQuery = z.infer<typeof listApplicationsQuerySchema>;
+
+/** Una pagina de solicitudes. Sin puntero significa que no quedan mas. */
+export const paginatedApplicationsSchema = z.object({
+  items: z.array(applicationSchema),
+  nextCursor: z.string().optional(),
+});
+
+export type PaginatedApplications = z.infer<typeof paginatedApplicationsSchema>;

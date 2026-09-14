@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+/* Tokens del sistema de diseno. Los colores de marca salen del logotipo, no estan
+   inventados: ver .claude/skills/web-design-system/design-system.md
+   El turquesa de marca da 1.64:1 con texto blanco, muy por debajo del minimo
+   accesible, asi que la accion primaria usa una version oscurecida. */
+@theme {
+  --color-brand: #0f6b66; /* accion primaria. Blanco encima: 6.33:1 */
+  --color-brand-hover: #0b5551;
+  --color-brand-accent: #40e0d0; /* turquesa exacto del logotipo */
+  --color-brand-subtle: #effbf9;
+
+  --color-ink: #092f42; /* azul petroleo del logotipo */
+
+  --color-success: #15803d;
+  --color-success-bg: #f0fdf4;
+  --color-warning: #b45309;
+  --color-warning-bg: #fffbeb;
+  --color-danger: #b91c1c;
+  --color-danger-bg: #fef2f2;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}

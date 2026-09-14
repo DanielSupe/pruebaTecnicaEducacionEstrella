@@ -49,6 +49,10 @@ CLIENT_ID="$(value cognito_user_pool_client_id)"
 # valor de produccion lo inyecta el despliegue.
 WEB_DEV_ORIGIN="${WEB_DEV_ORIGIN:-http://localhost:5173}"
 
+# Direccion de la API para el frontend. En local apunta al servidor de desarrollo;
+# el change de despliegue la sustituye por la de API Gateway.
+API_BASE_URL="${API_BASE_URL:-http://localhost:3000/api/v1}"
+
 # Las variables de la API no llevan prefijo: nunca salen del servidor.
 cat > "$REPO_ROOT/apps/api/.env" <<EOF
 # Generado por scripts/gen-env.sh a partir de las salidas de Terraform.
@@ -66,6 +70,7 @@ EOF
 cat > "$REPO_ROOT/apps/web/.env" <<EOF
 # Generado por scripts/gen-env.sh a partir de las salidas de Terraform.
 # No lo edites a mano: se regenera. No se versiona.
+VITE_API_BASE_URL=$API_BASE_URL
 VITE_AWS_REGION=$AWS_REGION
 VITE_COGNITO_USER_POOL_ID=$USER_POOL_ID
 VITE_COGNITO_CLIENT_ID=$CLIENT_ID

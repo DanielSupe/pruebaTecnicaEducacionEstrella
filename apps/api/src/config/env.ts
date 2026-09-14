@@ -53,6 +53,21 @@ const envSchema = z.object({
     .string({ error: "COGNITO_CLIENT_ID es obligatoria" })
     .trim()
     .min(1, "COGNITO_CLIENT_ID no puede estar vacia"),
+
+  APPLICATIONS_TABLE_NAME: z
+    .string({ error: "APPLICATIONS_TABLE_NAME es obligatoria" })
+    .trim()
+    .min(1, "APPLICATIONS_TABLE_NAME no puede estar vacia"),
+
+  VIDEOS_BUCKET_NAME: z
+    .string({ error: "VIDEOS_BUCKET_NAME es obligatoria" })
+    .trim()
+    .min(1, "VIDEOS_BUCKET_NAME no puede estar vacia"),
+
+  AWS_REGION: z
+    .string({ error: "AWS_REGION es obligatoria" })
+    .trim()
+    .min(1, "AWS_REGION no puede estar vacia"),
 });
 
 export type AppConfig = {
@@ -61,6 +76,9 @@ export type AppConfig = {
   corsAllowedOrigins: string[];
   cognitoUserPoolId: string;
   cognitoClientId: string;
+  applicationsTableName: string;
+  videosBucketName: string;
+  awsRegion: string;
 };
 
 /**
@@ -83,5 +101,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     corsAllowedOrigins: parsed.data.CORS_ALLOWED_ORIGINS,
     cognitoUserPoolId: parsed.data.COGNITO_USER_POOL_ID,
     cognitoClientId: parsed.data.COGNITO_CLIENT_ID,
+    applicationsTableName: parsed.data.APPLICATIONS_TABLE_NAME,
+    videosBucketName: parsed.data.VIDEOS_BUCKET_NAME,
+    awsRegion: parsed.data.AWS_REGION,
   };
 }

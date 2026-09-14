@@ -5,6 +5,9 @@ const minimo = {
   CORS_ALLOWED_ORIGINS: "http://localhost:5173",
   COGNITO_USER_POOL_ID: "us-east-1_XXXXXXXXX",
   COGNITO_CLIENT_ID: "clienteficticio123",
+  APPLICATIONS_TABLE_NAME: "tabla-de-prueba",
+  VIDEOS_BUCKET_NAME: "bucket-de-prueba",
+  AWS_REGION: "us-east-1",
 };
 
 describe("loadConfig", () => {
@@ -38,13 +41,16 @@ describe("loadConfig", () => {
     expect(() => loadConfig({ ...minimo, CORS_ALLOWED_ORIGINS: valor })).toThrowError();
   });
 
-  it.each(["COGNITO_USER_POOL_ID", "COGNITO_CLIENT_ID"])(
-    "falla si falta %s, diciendo cual",
-    (variable) => {
-      const { [variable]: _omitida, ...incompleta } = minimo as Record<string, string>;
-      expect(() => loadConfig(incompleta)).toThrowError(new RegExp(variable));
-    },
-  );
+  it.each([
+    "COGNITO_USER_POOL_ID",
+    "COGNITO_CLIENT_ID",
+    "APPLICATIONS_TABLE_NAME",
+    "VIDEOS_BUCKET_NAME",
+    "AWS_REGION",
+  ])("falla si falta %s, diciendo cual", (variable) => {
+    const { [variable]: _omitida, ...incompleta } = minimo as Record<string, string>;
+    expect(() => loadConfig(incompleta)).toThrowError(new RegExp(variable));
+  });
 
   it.each(["no-es-un-numero", "-1", "99999"])("rechaza el puerto invalido %s", (PORT) => {
     expect(() => loadConfig({ ...minimo, PORT })).toThrowError();

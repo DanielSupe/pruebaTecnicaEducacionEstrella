@@ -32,7 +32,25 @@ export class UnauthorizedError extends AppError {
    * caducado, manipulado o emitido para otro cliente. Precisar el motivo solo
    * ayuda a quien esta probando tokens: el usuario legitimo no necesita saberlo.
    */
-  constructor(message = "Credenciales ausentes o invalidas.") {
+  constructor(message = "Credenciales ausentes o inválidas.") {
     super(message, 401, "UNAUTHORIZED");
+  }
+}
+
+export class BadRequestError extends AppError {
+  constructor(message = "Los datos enviados no son válidos.") {
+    super(message, 400, "BAD_REQUEST");
+  }
+}
+
+export class ConflictError extends AppError {
+  /**
+   * La peticion choca con el estado actual del recurso: avisar de una subida
+   * que no ocurrio, o pedir una autorizacion nueva para algo ya enviado. No es
+   * un fallo del cliente al construir la peticion (eso seria 400) ni un fallo
+   * del servidor: es que el mundo no esta como la peticion supone.
+   */
+  constructor(message = "La operación no es posible en el estado actual.") {
+    super(message, 409, "CONFLICT");
   }
 }

@@ -4,7 +4,12 @@ import express from "express";
 import { createApp } from "./app.js";
 import { errorHandler } from "./middleware/error-handler.js";
 
-const config = { corsAllowedOrigins: ["http://localhost:5173"] };
+const config = {
+  corsAllowedOrigins: ["http://localhost:5173"],
+  awsRegion: "us-east-1",
+  applicationsTableName: "tabla-de-prueba",
+  videosBucketName: "bucket-de-prueba",
+};
 
 // Doble del verificador: estas pruebas son del contrato de la app, no de la
 // verificacion de tokens. Esa vive en authenticate.test.ts.
@@ -61,7 +66,7 @@ describe("errores inesperados", () => {
 
     expect(res.status).toBe(500);
     expect(res.body).toEqual({
-      error: { code: "INTERNAL_ERROR", message: "Ocurrio un error inesperado." },
+      error: { code: "INTERNAL_ERROR", message: "Ocurrió un error inesperado." },
     });
 
     // Lo que de verdad importa: nada del error original viaja al cliente.

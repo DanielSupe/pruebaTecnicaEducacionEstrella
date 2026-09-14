@@ -81,3 +81,21 @@ export const uploadAuthorizationSchema = z.object({
 });
 
 export type UploadAuthorization = z.infer<typeof uploadAuthorizationSchema>;
+
+/**
+ * Enlace temporal para ver un video ya almacenado.
+ *
+ * La caducidad viaja como INSTANTE ABSOLUTO y no como "quedan N segundos": el
+ * cliente no sabe cuanto tardo la respuesta en llegarle, y una duracion
+ * relativa se interpreta desde un momento distinto al que el servidor tenia en
+ * mente.
+ *
+ * El enlace lleva la firma dentro. Es una credencial de corta vida: no se
+ * guarda ni se registra en ningun sitio.
+ */
+export const videoLinkSchema = z.object({
+  url: z.url(),
+  expiresAt: z.iso.datetime(),
+});
+
+export type VideoLink = z.infer<typeof videoLinkSchema>;

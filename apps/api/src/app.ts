@@ -8,7 +8,7 @@ import { healthRouter } from "./routes/health.js";
 import { createMeRouter } from "./routes/me.js";
 import { createApplicationsRouter } from "./features/applications/routes.js";
 import { createApplicationsRepository } from "./features/applications/repository.js";
-import { createUploadAuthorizer } from "./features/applications/uploads.js";
+import { createVideoStorage } from "./features/applications/uploads.js";
 
 /** Cuerpo maximo aceptado. La API nunca recibe archivos: el video va directo a S3
  *  con una politica firmada, asi que el cuerpo mas grande son unos cientos de bytes
@@ -46,7 +46,7 @@ export function createApp(config: AppDependencies, verifier: AccessTokenVerifier
     createApplicationsRouter(
       autenticar,
       createApplicationsRepository(config),
-      createUploadAuthorizer(config),
+      createVideoStorage(config),
     ),
   );
 

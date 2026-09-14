@@ -6,12 +6,12 @@ import {
 } from "@educacion-estrella/shared";
 import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from "../../errors.js";
 import type { ApplicationsRepository } from "./repository.js";
-import { type UploadAuthorizer, videoKeyFor } from "./uploads.js";
+import { type VideoStorage, videoKeyFor } from "./uploads.js";
 
 export function createApplicationsRouter(
   authenticate: RequestHandler,
   repositorio: ApplicationsRepository,
-  subidas: UploadAuthorizer,
+  almacenamiento: VideoStorage,
 ): Router {
   const router = Router();
 
@@ -42,7 +42,10 @@ export function createApplicationsRouter(
           (applicationId: string) => videoKeyFor(userId, applicationId, datos.videoContentType),
         );
 
-        const upload = await subidas.authorizeUpload(solicitud.videoKey, datos.videoContentType);
+        const upload = await almacenamiento.authorizeUpload(
+          solicitud.videoKey,
+          datos.videoContentType,
+        );
 
         res.status(201).json({
           applicationId: solicitud.applicationId,
@@ -115,7 +118,7 @@ export function createApplicationsRouter(
           return;
         }
 
-        const video = await subidas.verifyStoredVideo(
+        const video = await almacenamiento.verifyStoredVideo(
           solicitud.videoKey,
           solicitud.videoContentType,
         );
@@ -130,7 +133,7 @@ export function createApplicationsRouter(
           throw new ConflictError(`No pudimos validar el video: ${video.motivo}.`);
         }
 
-        await subidas.markVideoAsConfirmed(solicitud.videoKey);
+        await almacenamiento.markVideoAsConfirmed(solicitud.videoKey);
 
         const actualizada = await repositorio.markAsSubmitted(
           userId,
@@ -141,6 +144,42 @@ export function createApplicationsRouter(
         // null significa que la condicion no se cumplio, es decir que otra
         // peticion la envio mientras tanto. Tampoco es un error.
         res.json(sinClaveInterna(actualizada ?? { ...solicitud, status: "UNDER_REVIEW" }));
+      } catch (error) {
+        next(error);
+      }
+    })();
+  });
+
+  /**
+   * Enlace temporal para VER el video.
+   *
+   * Mismo camino que la re-firma de subida y distinto metodo: es el mismo
+   * recurso —la direccion del video de esta solicitud— y el metodo separa
+   * escribirlo de leerlo. Inventar un segundo camino parecido solo invitaria a
+   * confundirlos.
+   */
+  router.get("/applications/:id/video-url", authenticate, (req, res, next) => {
+    void (async () => {
+      try {
+        const userId = req.user?.userId;
+        if (!userId) throw new UnauthorizedError();
+
+        const solicitud = await buscarPropia(userId, req.params.id);
+
+        // Una solicitud pendiente puede no tener objeto, o tener uno que nunca
+        // se verifico. Firmar hacia algo que quiza no existe le devolveria al
+        // usuario un error opaco del almacenamiento en vez de una explicacion.
+        if (solicitud.status !== "UNDER_REVIEW") {
+          throw new ConflictError(
+            "Esta solicitud todavía no tiene un video confirmado que puedas ver.",
+          );
+        }
+
+        const enlace = await almacenamiento.authorizeView(solicitud.videoKey);
+
+        // Se devuelve el enlace, NO la ubicacion del objeto: la lleva dentro
+        // firmada, que es distinto de publicarla como dato.
+        res.json(enlace);
       } catch (error) {
         next(error);
       }
@@ -165,7 +204,7 @@ export function createApplicationsRouter(
           throw new ConflictError("Esta solicitud ya fue enviada y su video está confirmado.");
         }
 
-        const upload = await subidas.authorizeUpload(
+        const upload = await almacenamiento.authorizeUpload(
           solicitud.videoKey,
           solicitud.videoContentType,
         );

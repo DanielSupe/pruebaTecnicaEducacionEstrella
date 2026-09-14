@@ -12,6 +12,7 @@ const leerSolicitud = vi.fn();
 const marcarEnviada = vi.fn();
 const verificarVideo = vi.fn();
 const marcarConfirmado = vi.fn();
+const firmarLectura = vi.fn();
 const listarSolicitudes = vi.fn();
 
 /** Registro del orden en que se llamaron las operaciones del aviso. */
@@ -28,8 +29,9 @@ const repositorio = {
   listApplications: listarSolicitudes,
 };
 
-const subidas = {
+const almacenamiento = {
   authorizeUpload: autorizarSubida,
+  authorizeView: firmarLectura,
   verifyStoredVideo: verificarVideo,
   markVideoAsConfirmed: marcarConfirmado,
 };
@@ -69,7 +71,10 @@ function autenticaComo(userId: string | null): RequestHandler {
 function app(userId: string | null = SUB) {
   const aplicacion = express();
   aplicacion.use(express.json());
-  aplicacion.use("/api/v1", createApplicationsRouter(autenticaComo(userId), repositorio, subidas));
+  aplicacion.use(
+    "/api/v1",
+    createApplicationsRouter(autenticaComo(userId), repositorio, almacenamiento),
+  );
   aplicacion.use(notFoundHandler);
   aplicacion.use(errorHandler);
   return aplicacion;
@@ -83,6 +88,11 @@ beforeEach(() => {
   marcarEnviada.mockReset();
   verificarVideo.mockReset();
   marcarConfirmado.mockReset();
+  firmarLectura.mockReset();
+  firmarLectura.mockResolvedValue({
+    url: "https://bucket.s3.amazonaws.com/videos/x/01HXYZ.mp4?X-Amz-Signature=abc",
+    expiresAt: "2026-09-14T10:15:00.000Z",
+  });
   listarSolicitudes.mockReset();
   listarSolicitudes.mockResolvedValue({ items: [], nextCursor: undefined });
 
@@ -312,6 +322,78 @@ describe("POST /:id/video-url", () => {
     const res = await request(app()).post(url).send();
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe("GET /:id/video-url: enlace para ver el video", () => {
+  const url = "/api/v1/applications/01HXYZ/video-url";
+  const ENVIADA = { ...SOLICITUD_PENDIENTE, status: "UNDER_REVIEW" as const };
+
+  it("firma la lectura de la ruta registrada en la solicitud", async () => {
+    leerSolicitud.mockResolvedValue(ENVIADA);
+
+    const res = await request(app()).get(url);
+
+    expect(res.status).toBe(200);
+    expect(firmarLectura).toHaveBeenCalledWith(`videos/${SUB}/01HXYZ.mp4`);
+    expect(res.body.url).toContain("X-Amz-Signature");
+  });
+
+  it("la respuesta NO expone la ubicación del objeto como dato", async () => {
+    // Va dentro del enlace, firmada. Devolverla aparte seria publicarla.
+    leerSolicitud.mockResolvedValue(ENVIADA);
+
+    const res = await request(app()).get(url);
+
+    expect(res.body).toEqual({
+      url: expect.any(String) as string,
+      expiresAt: expect.any(String) as string,
+    });
+    expect(res.body).not.toHaveProperty("videoKey");
+  });
+
+  it("la caducidad va por delante del momento de la petición", async () => {
+    leerSolicitud.mockResolvedValue(ENVIADA);
+    const antes = Date.now();
+    firmarLectura.mockImplementation(() =>
+      Promise.resolve({
+        url: "https://bucket.s3.amazonaws.com/x?X-Amz-Signature=abc",
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      }),
+    );
+
+    const res = await request(app()).get(url);
+
+    expect(new Date(res.body.expiresAt as string).getTime()).toBeGreaterThan(antes);
+  });
+
+  it("sin el video confirmado responde con conflicto y NO llega a firmar nada", async () => {
+    // Afirmar solo sobre el codigo dejaria pasar una version que firma primero
+    // y decide despues: la firma es justo lo que no debe ocurrir.
+    leerSolicitud.mockResolvedValue(SOLICITUD_PENDIENTE);
+
+    const res = await request(app()).get(url);
+
+    expect(res.status).toBe(409);
+    expect(firmarLectura).not.toHaveBeenCalled();
+  });
+
+  it("una solicitud ajena se comporta como inexistente y no se firma nada", async () => {
+    leerSolicitud.mockResolvedValue(null);
+
+    const res = await request(app()).get(url);
+
+    expect(res.status).toBe(404);
+    expect(firmarLectura).not.toHaveBeenCalled();
+  });
+
+  it("sin identidad responde 401 y no se firma nada", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await request(app(null)).get(url);
+
+    expect(res.status).toBe(401);
+    expect(firmarLectura).not.toHaveBeenCalled();
   });
 });
 

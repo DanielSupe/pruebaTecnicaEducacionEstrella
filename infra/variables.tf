@@ -56,3 +56,29 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+# Tope de ejecuciones simultaneas de la API: limita el gasto y el radio de impacto
+# de una funcion que cualquiera puede invocar.
+#
+# El valor por omision es -1, que significa "sin reserva propia", y NO es dejadez:
+# esta cuenta tiene un limite TOTAL de 10 ejecuciones simultaneas, y AWS exige
+# dejar al menos 10 sin reservar. Reservar cualquier cantidad es literalmente
+# imposible aqui. El limite de la cuenta ya actua como tope.
+#
+# En una cuenta con el limite habitual de 1000, esto se pone en un numero concreto
+# y entonces el tope es por funcion, que es lo deseable: asi un abuso de la API no
+# consume la capacidad del resto de funciones.
+variable "api_reserved_concurrency" {
+  description = "Ejecuciones simultaneas reservadas para la API. -1 desactiva la reserva."
+  type        = number
+  default     = -1
+}
+
+# El valor por omision es el correcto para cualquier entorno real: un bucket no
+# deberia poder destruirse con contenido dentro por descuido. Este entorno, que es
+# desechable y vive semanas, opta por salirse en su archivo de variables.
+variable "videos_bucket_force_destroy" {
+  description = "Permitir destruir el bucket de videos aunque conserve objetos."
+  type        = bool
+  default     = false
+}

@@ -11,20 +11,39 @@ import { z } from "zod";
  * Este es el UNICO archivo que lee import.meta.env.
  */
 const envSchema = z.object({
-  // z.url() por si solo acepta "localhost:3000": el parser lo lee como esquema
-  // "localhost:" con ruta "3000". Y olvidar el http:// es el error de
-  // configuracion mas comun, asi que el protocolo se comprueba de forma explicita.
+  // Dos formas legitimas, y ninguna mas.
+  //
+  // Absoluta con protocolo: la API vive en otro origen. Es el caso del desarrollo
+  // local, donde el navegador esta en el 5173 y la API en el 3000.
+  //
+  // Ruta desde la raiz: frontend y API comparten origen, que es como se sirve en
+  // la nube. Ademas rompe un circulo, porque el dominio solo se conoce al aplicar
+  // la infraestructura y el paquete hay que construirlo antes de subirlo: una
+  // ruta relativa no necesita saber el dominio.
+  //
+  // Lo que se sigue rechazando: una absoluta SIN protocolo. z.url() por si sola
+  // acepta "localhost:3000", porque lo lee como esquema "localhost:" con ruta
+  // "3000", y olvidar el http:// es el error de configuracion mas comun. Y una
+  // ruta que no empiece por barra, que se resolveria contra la pagina actual y
+  // funcionaria o no segun desde donde se navegue.
   VITE_API_BASE_URL: z
-    .url({ error: "VITE_API_BASE_URL es obligatoria y debe ser una URL valida" })
+    .string({ error: "VITE_API_BASE_URL es obligatoria" })
+    .trim()
+    .min(1, "VITE_API_BASE_URL no puede estar vacia")
     .refine(
       (valor) => {
+        if (valor.startsWith("/")) return true;
+
         try {
           return /^https?:$/.test(new URL(valor).protocol);
         } catch {
           return false;
         }
       },
-      { error: "VITE_API_BASE_URL debe empezar por http:// o https://" },
+      {
+        error:
+          "VITE_API_BASE_URL debe ser una URL que empiece por http:// o https://, o una ruta que empiece por /",
+      },
     ),
 
   // Identificadores del directorio de usuarios. No son secretos: viajan en el

@@ -6,6 +6,10 @@ resource "random_id" "bucket_suffix" {
 }
 
 resource "aws_s3_bucket" "videos" {
+  # Con versionado activo, destruir exige borrar tambien versiones y marcadores.
+  # Ver la variable: el valor por omision NO destruye datos.
+  force_destroy = var.videos_bucket_force_destroy
+
   bucket = "${var.project_name}-videos-${random_id.bucket_suffix.hex}"
 }
 
@@ -50,7 +54,13 @@ resource "aws_s3_bucket_cors_configuration" "videos" {
 
   cors_rule {
     allowed_methods = ["POST"]
-    allowed_origins = var.allowed_upload_origins
+    # El dominio de la distribucion se anade aqui, no en la variable: se conoce al
+    # aplicar y escribirlo a mano obligaria a recordar actualizarlo. La subida
+    # firmada va directa al almacenamiento, asi que este CORS si hace falta.
+    allowed_origins = concat(
+      var.allowed_upload_origins,
+      ["https://${aws_cloudfront_distribution.web.domain_name}"],
+    )
     allowed_headers = ["*"]
     expose_headers  = ["ETag", "Location"]
     max_age_seconds = 3000

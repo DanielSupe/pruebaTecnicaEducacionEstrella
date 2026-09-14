@@ -33,3 +33,23 @@ output "cognito_issuer_url" {
   description = "Emisor de los tokens. La API lo necesita para verificar la firma."
   value       = "https://cognito-idp.${var.aws_region}.amazonaws.com/${aws_cognito_user_pool.main.id}"
 }
+
+output "web_url" {
+  description = "Direccion publica de la aplicacion. Sirve el frontend y la API bajo /api."
+  value       = "https://${aws_cloudfront_distribution.web.domain_name}"
+}
+
+output "web_bucket_name" {
+  description = "Bucket del frontend. Lo usa el script de publicacion."
+  value       = aws_s3_bucket.web.id
+}
+
+output "cloudfront_distribution_id" {
+  description = "Identificador de la distribucion, para invalidar la cache al publicar."
+  value       = aws_cloudfront_distribution.web.id
+}
+
+output "api_gateway_url" {
+  description = "Direccion directa de la puerta de enlace. El navegador no la usa: solo para diagnostico."
+  value       = aws_apigatewayv2_api.api.api_endpoint
+}

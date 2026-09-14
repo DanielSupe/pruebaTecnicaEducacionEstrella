@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "dev": "tsx watch --env-file=.env src/server.ts",
-    "start": "tsx --env-file=.env src/server.ts"
+    "start": "tsx --env-file=.env src/server.ts",
+    "build": "esbuild src/lambda.ts --bundle --platform=node --target=node22 --format=esm --outfile=../../infra/build/api/index.mjs --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\""
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1131.0",
@@ -21,14 +22,17 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
+    "serverless-http": "^4.0.0",
     "ulid": "^3.0.2",
     "zod": "^4.6.2"
   },
   "devDependencies": {
+    "@types/aws-lambda": "^8.10.163",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.2",
     "@types/supertest": "^7.2.1",
+    "esbuild": "^0.28.2",
     "supertest": "^7.2.2",
     "tsx": "^4.23.13"
   }

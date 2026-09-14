@@ -29,10 +29,29 @@ describe("loadConfig", () => {
     },
   );
 
-  it.each(["", "no-es-una-url", "localhost:3000", "  "])(
+  it.each(["", "no-es-una-url", "localhost:3000", "  ", "api/v1", "./api/v1"])(
     "rechaza la direccion invalida %s",
     (VITE_API_BASE_URL) => {
+      // "localhost:3000" es el caso que no salta a la vista: sin protocolo, el
+      // parser lo lee como esquema "localhost:" con ruta "3000". Y "api/v1" se
+      // resolveria contra la pagina actual, asi que funcionaria o no segun desde
+      // donde se navegara.
       expect(() => loadConfig({ ...minimo, VITE_API_BASE_URL })).toThrowError();
     },
   );
+
+  it("acepta una ruta desde la raiz, para cuando frontend y API comparten origen", () => {
+    // Es como se sirve en la nube, y ademas evita tener que conocer el dominio
+    // para poder construir el paquete.
+    const config = loadConfig({ ...minimo, VITE_API_BASE_URL: "/api/v1" });
+
+    expect(config.apiBaseUrl).toBe("/api/v1");
+  });
+
+  it("a una ruta desde la raiz tambien le quita la barra final", () => {
+    // Si no, las peticiones saldrian con doble barra.
+    const config = loadConfig({ ...minimo, VITE_API_BASE_URL: "/api/v1/" });
+
+    expect(config.apiBaseUrl).toBe("/api/v1");
+  });
 });

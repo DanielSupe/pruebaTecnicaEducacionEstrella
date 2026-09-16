@@ -1,5 +1,5 @@
-# Se empaqueta con archive_file para no depender de ninguna herramienta externa de
-# construccion: son unas pocas lineas de JavaScript sin dependencias.
+# Packed with archive_file to avoid depending on any external build tool: it is a
+# few lines of JavaScript with no dependencies.
 data "archive_file" "pre_signup" {
   type        = "zip"
   output_path = "${path.module}/build/pre-signup.zip"
@@ -26,16 +26,16 @@ resource "aws_iam_role" "pre_signup" {
   assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
 }
 
-# Se crea explicitamente para fijar la retencion. Si se deja que Lambda lo cree al
-# vuelo, la retencion es indefinida y los registros crecen sin control.
+# Created explicitly to pin the retention. Letting Lambda create it on the fly
+# leaves retention indefinite and the logs grow unchecked.
 resource "aws_cloudwatch_log_group" "pre_signup" {
   name              = "/aws/lambda/${var.project_name}-pre-signup"
   retention_in_days = var.log_retention_days
 }
 
-# Minimo privilegio de verdad: solo escribir en SU grupo de registros. No se usa la
-# politica gestionada AWSLambdaBasicExecutionRole porque concede logs sobre todos
-# los recursos, y aqui no hace falta.
+# Real least privilege: write to ITS OWN log group only. The managed
+# AWSLambdaBasicExecutionRole is not used because it grants logs over every
+# resource.
 data "aws_iam_policy_document" "pre_signup_logs" {
   statement {
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]

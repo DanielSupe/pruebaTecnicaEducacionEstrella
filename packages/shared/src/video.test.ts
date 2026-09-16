@@ -9,9 +9,8 @@ import {
 const validMetadata = { contentType: "video/mp4", sizeBytes: 1024 } as const;
 
 describe("MAX_VIDEO_BYTES", () => {
-  // Este valor lo comparten la validación del navegador, la política de subida
-  // firmada y la verificación del objeto almacenado. Si alguien lo cambia sin
-  // cambiar los otros dos, esta prueba lo detecta antes que un usuario.
+  // Shared by the browser check, the signed upload policy and the stored-object
+  // verification. If one is changed without the others, this catches it first.
   it("son exactamente 200 MiB", () => {
     expect(MAX_VIDEO_BYTES).toBe(209_715_200);
   });
@@ -37,7 +36,7 @@ describe("videoFileSchema: tipo de contenido", () => {
 
 describe("videoFileSchema: tamaño", () => {
   it("acepta un video que pesa exactamente el límite", () => {
-    // El límite es inclusivo: un video de justo 200 MiB es válido.
+    // The limit is inclusive: exactly 200 MiB is valid.
     const result = videoFileSchema.safeParse({ ...validMetadata, sizeBytes: MAX_VIDEO_BYTES });
     expect(result.success).toBe(true);
   });

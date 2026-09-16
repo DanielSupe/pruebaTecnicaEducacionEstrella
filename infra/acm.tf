@@ -1,34 +1,24 @@
-# Certificado del dominio propio.
+# In us-east-1, and that is not a choice: CloudFront only accepts certificates from
+# that region, wherever everything else lives.
 #
-# En us-east-1 y no es una eleccion: CloudFront solo acepta certificados de esa
-# region, viva donde viva el resto. Aqui coincide con la region del proyecto, asi
-# que no hace falta declarar un segundo proveedor apuntando a otra region, que es
-# la complicacion habitual de este paso.
-#
-# Validacion por DNS y no por correo: la validacion por correo depende de que
-# exista y se lea un buzon en el dominio, y no deja rastro comprobable. Un registro
-# DNS se puede verificar desde fuera y repetir.
+# DNS validation rather than email: email validation depends on a mailbox existing
+# and being read, and leaves no checkable trace.
 resource "aws_acm_certificate" "web" {
   count = var.web_domain == "" ? 0 : 1
 
   domain_name       = var.web_domain
   validation_method = "DNS"
 
-  # Sin esto, cambiar el nombre destruiria el certificado en uso antes de emitir el
-  # nuevo, y la distribucion se quedaria un rato sin certificado valido.
+  # Without this, changing the name would destroy the certificate in use before
+  # issuing the new one.
   lifecycle {
     create_before_destroy = true
   }
 }
 
-# Espera a que el certificado quede emitido.
-#
-# El registro de validacion lo anade a mano quien administra el DNS, porque la zona
-# vive en el registrador y no en esta cuenta. Traerla aqui automatizaria el paso a
-# cambio de una zona alojada al mes, que no entra en la capa gratuita.
-#
-# Este recurso se queda esperando hasta que el certificador ve el registro. Es el
-# unico punto del despliegue que depende de una accion humana, y esta documentado.
+# The validation record is added by hand by whoever administers the DNS, because
+# the zone lives at the registrar. This resource waits until the certifier sees it:
+# the only point of the deployment that depends on a human.
 resource "aws_acm_certificate_validation" "web" {
   count = var.web_domain == "" ? 0 : 1
 

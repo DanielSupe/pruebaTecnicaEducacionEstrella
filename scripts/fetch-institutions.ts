@@ -1,16 +1,10 @@
-/**
- * Descarga el listado de instituciones de educacion superior de Colombia.
- *
- * El resultado SE VERSIONA. La aplicacion no consulta este servicio en ejecucion:
- * son 300 nombres que caben en el paquete, y hornearlos evita dos cosas. Una,
- * autorizar un origen externo en la politica de seguridad de contenido. Dos, que
- * el formulario dependa de que una API del gobierno responda — el despliegue
- * tiene que seguir funcionando aunque ese servicio se caiga.
- *
- * Actualizar es ejecutar esto a proposito y revisar el diff.
- *
- * Uso: pnpm tsx scripts/fetch-institutions.ts
- */
+// Downloads the list of Colombian higher education institutions.
+//
+// The result IS VERSIONED. The application never queries this service at runtime:
+// baking the names in avoids authorising an external origin in the content security
+// policy, and stops the form depending on a government API being up.
+//
+// Usage: pnpm tsx scripts/fetch-institutions.ts
 import { writeFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,8 +19,8 @@ const DESTINO = resolve(
 type Registro = { nombre_instituci_n?: string };
 
 async function main(): Promise<void> {
-  // El limite se pide explicito: sin el, el servicio devuelve solo las primeras
-  // mil filas y nadie se entera de que falta algo.
+  // The limit is explicit: without it the service returns only the first thousand
+  // rows and nobody notices something is missing.
   const url = `${ORIGEN}?$limit=2000&$select=nombre_instituci_n`;
 
   console.warn(`Descargando de ${ORIGEN}…`);
@@ -38,9 +32,8 @@ async function main(): Promise<void> {
 
   const registros = (await respuesta.json()) as Registro[];
 
-  // El registro trae una fila por SEDE, no por institucion: 361 filas para 300
-  // nombres. Sin deduplicar, "UNIVERSIDAD NACIONAL DE COLOMBIA" apareceria nueve
-  // veces seguidas en el desplegable.
+  // The registry has one row per CAMPUS, not per institution. Without
+  // deduplication the same name would appear nine times in a row.
   const nombres = [
     ...new Set(
       registros
@@ -53,8 +46,8 @@ async function main(): Promise<void> {
     throw new Error("El servicio no devolvio ningun nombre. No se sobrescribe el listado.");
   }
 
-  // Se dejan EN MAYUSCULAS, como en el registro oficial. Pasarlos a formato
-  // titulo romperia las siglas, que son muchas: SENA, CESA, CEA.
+  // Kept UPPERCASE, as in the official registry: title case would break the many
+  // acronyms.
   writeFileSync(DESTINO, JSON.stringify(nombres, null, 2) + "\n", "utf8");
 
   console.warn(`${String(registros.length)} filas → ${String(nombres.length)} nombres unicos.`);

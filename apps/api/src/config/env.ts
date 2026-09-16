@@ -1,20 +1,14 @@
 import { z } from "zod";
 
-/**
- * Configuracion de la API.
- *
- * Se valida al arrancar, no al usarse. La diferencia importa: un despliegue mal
- * configurado falla al instante y con un mensaje que dice que variable falta, en
- * lugar de romperse a mitad de la peticion de un usuario real, con un error que no
- * apunta a la causa.
- *
- * Este es el UNICO archivo que lee process.env.
- */
+// Validated at startup, not at use: a misconfigured deployment fails immediately
+// naming the missing variable, instead of breaking mid-request later.
+//
+// This is the ONLY file that reads process.env.
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
-  // El puerto solo importa en local: en Lambda no se escucha en ninguno. Por eso
-  // aqui un valor por omision no enmascara nada.
+  // Only matters locally: on Lambda nothing listens on a port, so a default here
+  // masks nothing.
   PORT: z.coerce
     .number({ error: "PORT debe ser un numero" })
     .int()
@@ -22,12 +16,9 @@ const envSchema = z.object({
     .max(65535)
     .default(3000),
 
-  // Sin valor por omision a proposito. Un default aqui significaria desplegar con
-  // los origenes equivocados sin enterarse.
-  //
-  // Se parte y se limpia DENTRO del esquema, y se valida el resultado: comprobar
-  // solo que la cadena no este vacia dejaria pasar "   ", que produce cero origenes
-  // en silencio y deja la API inalcanzable desde el navegador.
+  // Split and trimmed INSIDE the schema, then validated: checking only that the
+  // string is non-empty would let "   " through, which yields zero origins in
+  // silence and leaves the API unreachable from the browser.
   CORS_ALLOWED_ORIGINS: z
     .string({ error: "CORS_ALLOWED_ORIGINS es obligatoria" })
     .transform((valor) =>
@@ -41,9 +32,8 @@ const envSchema = z.object({
       "CORS_ALLOWED_ORIGINS debe incluir al menos un origen",
     ),
 
-  // Identificadores del directorio de usuarios. Obligatorios y sin valor por
-  // omision: un default significaria verificar los tokens contra el directorio
-  // equivocado, que es peor que no verificarlos, porque parece que funciona.
+  // No defaults: one would mean verifying tokens against the wrong user pool,
+  // which is worse than not verifying, because it looks like it works.
   COGNITO_USER_POOL_ID: z
     .string({ error: "COGNITO_USER_POOL_ID es obligatoria" })
     .trim()
@@ -81,10 +71,6 @@ export type AppConfig = {
   awsRegion: string;
 };
 
-/**
- * Valida el entorno y devuelve la configuracion ya tipada.
- * Lanza si algo falta o es invalido: quien la llama decide si eso aborta el proceso.
- */
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = envSchema.safeParse(source);
 

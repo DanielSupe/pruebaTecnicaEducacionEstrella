@@ -1,18 +1,8 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
-/**
- * Ventana emergente con contenido.
- *
- * Se apoya en el <dialog> del navegador y NO en SweetAlert2. La libreria sigue
- * siendo el unico camino para confirmar, avisar de un error y avisar de un
- * exito (ver lib/dialogs.ts), pero recibe HTML, no componentes: una barra de
- * progreso que avanza o un reproductor dentro de Swal obligarian a montar React
- * en su contenedor con un portal y a sincronizar dos ciclos de vida.
- *
- * El elemento nativo da justo lo que se le agradece a la libreria —trampa de
- * foco, cierre con Escape, aria-modal y fondo inerte— sin nada de eso. No es
- * meter otra libreria de interfaz: es la plataforma.
- */
+// Built on the browser's <dialog>, not on SweetAlert2. That library takes HTML,
+// not components, so live state inside it would need a React portal and two
+// lifecycles kept in sync. See lib/dialogs.ts for the alerts.
 export function Modal({
   abierto,
   titulo,
@@ -23,25 +13,18 @@ export function Modal({
   abierto: boolean;
   titulo: string;
   descripcion?: string;
-  /** Se invoca ante cualquier intento de cierre: boton, Escape o clic fuera. */
   onCerrar: () => void;
   children: ReactNode;
 }) {
   const dialogo = useRef<HTMLDialogElement>(null);
-  // Elemento que tenia el foco al abrir, para devolverselo al cerrar. Sin esto
-  // quien navega con teclado reaparece al principio de la pagina.
+  // Whoever had focus when it opened, to hand it back on close.
   const focoPrevio = useRef<HTMLElement | null>(null);
 
-  /**
-   * Devuelve el foco a quien abrio la ventana.
-   *
-   * NO se limpia la referencia despues. Parece prudente hacerlo "para no
-   * devolver el foco dos veces", pero en desarrollo React monta, desmonta y
-   * vuelve a montar cada componente a proposito: esa limpieza se llevaba la
-   * referencia en el desmontaje de mentira, y al volver a montar el dialogo ya
-   * estaba abierto, asi que no se recapturaba y el foco no volvia nunca.
-   * Enfocar dos veces el mismo elemento no hace nada; perder la referencia, si.
-   */
+  // The reference is NOT cleared afterwards. Clearing it looks prudent "so focus
+  // is not restored twice", but React mounts, unmounts and remounts on purpose in
+  // development: that cleanup took the reference on the fake unmount, and on
+  // remount the dialog was already open so it was never recaptured. Focusing the
+  // same element twice does nothing; losing the reference does.
   function devolverFoco() {
     focoPrevio.current?.focus();
   }
@@ -51,13 +34,12 @@ export function Modal({
     if (!elemento) return;
 
     if (abierto) {
-      // Se captura al abrir y solo si no habia nada guardado: quien abrio la
-      // ventana es quien tenia el foco la PRIMERA vez, no en un remontaje.
+      // Captured only if nothing was stored: the opener is who had focus the
+      // FIRST time, not on a remount.
       focoPrevio.current ??= document.activeElement as HTMLElement | null;
 
-      // showModal y no el atributo open: es lo que hace la ventana modal de
-      // verdad (fondo inerte y foco atrapado). Con el atributo, la pagina de
-      // detras sigue siendo navegable con el tabulador.
+      // showModal, not the open attribute: only it makes the dialog truly modal
+      // (inert background, trapped focus).
       if (!elemento.open) elemento.showModal();
     }
 
@@ -67,21 +49,17 @@ export function Modal({
     }
   }, [abierto]);
 
-  // Devolver el foco al DESMONTAR, no solo al pasar a cerrado. Quien usa este
-  // componente puede dejar de renderizarlo para cerrarlo, que es lo natural
-  // cuando el contenido tiene que empezar de cero la proxima vez. En ese caso
-  // el efecto de arriba no llega a correr: React ya quito el dialogo del
-  // documento y el foco cae al body, dejando a quien navega con teclado al
-  // principio de la pagina.
+  // Also on UNMOUNT, not only on closing. Callers may stop rendering this to
+  // close it, and then the effect above never runs: React has already removed the
+  // dialog and focus falls to the body.
   useEffect(() => devolverFoco, []);
 
   useEffect(() => {
     const elemento = dialogo.current;
     if (!elemento) return;
 
-    // El navegador cierra con Escape por su cuenta. Se intercepta para que la
-    // decision la tome siempre quien usa el componente: durante una subida hay
-    // que confirmar antes de perderla.
+    // The browser closes on Escape by itself. Intercepted so the caller always
+    // decides: during an upload it must confirm first.
     const alCancelar = (evento: Event) => {
       evento.preventDefault();
       onCerrar();
@@ -96,8 +74,8 @@ export function Modal({
       ref={dialogo}
       aria-labelledby="titulo-modal"
       className="m-auto w-[calc(100vw-2rem)] max-w-lg rounded-lg bg-white p-6 shadow-lg backdrop:bg-ink/60"
-      // Clic sobre el fondo: el <dialog> ocupa solo la tarjeta, asi que un clic
-      // cuyo destino es el propio dialogo cayo fuera del contenido.
+      // The <dialog> box is only the card, so a click targeting it landed outside
+      // the content.
       onClick={(evento) => {
         if (evento.target === dialogo.current) onCerrar();
       }}

@@ -1,13 +1,8 @@
-# Puerta de enlace de la API.
+# A $default stage rather than a named one: a named stage prefixes its name to the
+# path, which would then need undoing at the edge.
 #
-# Etapa $default y no una con nombre: una etapa con nombre antepone su nombre a la
-# ruta, y habria que deshacerlo reescribiendo en el borde. Asi /api/v1/health llega
-# tal cual a Express, sin capa de traduccion que exista solo para deshacer un
-# prefijo que no hacia falta.
-#
-# SIN cors_configuration a proposito: el navegador solo habla con la distribucion,
-# que sirve el frontend y la API bajo el mismo origen. Declarar CORS aqui seria
-# configurar una politica para peticiones que nunca ocurren.
+# NO cors_configuration on purpose: the browser only talks to the distribution,
+# which serves frontend and API under the same origin.
 resource "aws_apigatewayv2_api" "api" {
   name          = "${var.project_name}-api"
   protocol_type = "HTTP"
@@ -20,8 +15,7 @@ resource "aws_apigatewayv2_integration" "api" {
   payload_format_version = "2.0"
 }
 
-# Una sola ruta que lo recoge todo: el enrutado ya lo hace Express, y duplicarlo
-# aqui significaria mantener dos listas de rutas que tienen que coincidir.
+# One catch-all route: Express already does the routing.
 resource "aws_apigatewayv2_route" "api" {
   api_id    = aws_apigatewayv2_api.api.id
   route_key = "$default"

@@ -1,9 +1,5 @@
 import { loadConfig } from "./env.js";
 
-/**
- * Configuracion de la aplicacion en tiempo de ejecucion.
- *
- * La MISMA validacion corre ademas durante la construccion, desde vite.config.ts:
- * es lo unico que impide publicar un artefacto que apunta a ninguna parte.
- */
+// The SAME validation also runs at build time from vite.config.ts: that is what
+// stops publishing a bundle pointing nowhere.
 export const config = loadConfig();

@@ -2,16 +2,12 @@ import axios, { type AxiosInstance } from "axios";
 import { config } from "../config/config.js";
 import { getAccessToken } from "./session.js";
 
-/**
- * Error ya traducido a algo que se le puede enseñar a una persona.
- *
- * El mensaje tecnico crudo nunca llega a la interfaz: ni un "Network Error", ni
- * un codigo de estado a secas, ni la traza de axios.
- */
+// The raw technical message never reaches the interface: no "Network Error", no
+// bare status code, no axios stack.
 export class ApiError extends Error {
   readonly code: string;
   readonly status?: number;
-  /** Si la accion se puede repetir tal cual, la interfaz ofrece reintentar. */
+  /** Whether the interface should offer to retry. */
   readonly retriable: boolean;
 
   constructor(message: string, code: string, options: { status?: number; retriable: boolean }) {
@@ -23,7 +19,6 @@ export class ApiError extends Error {
   }
 }
 
-/** Formato de error que devuelve la API. Lo define la capability api-rest. */
 function mensajeDeLaApi(data: unknown): string | null {
   if (typeof data !== "object" || data === null || !("error" in data)) return null;
   const error = (data as { error: unknown }).error;
@@ -40,14 +35,6 @@ function codigoDeLaApi(data: unknown): string | null {
   return typeof code === "string" ? code : null;
 }
 
-/**
- * Traduce cualquier fallo a un ApiError.
- *
- * Tres casos, porque al usuario le importan de forma distinta:
- *  - La API respondio con un error: ya trae un mensaje pensado para leerse.
- *  - La API no respondio: el problema es de red o el servicio no esta.
- *  - La peticion se cancelo: no es un fallo, no hay que avisar de nada.
- */
 export function toApiError(error: unknown): ApiError {
   if (error instanceof ApiError) return error;
 
@@ -61,7 +48,7 @@ export function toApiError(error: unknown): ApiError {
       return new ApiError(
         mensajeDeLaApi(error.response.data) ?? "No se pudo completar la operación.",
         codigoDeLaApi(error.response.data) ?? "API_ERROR",
-        // Reintentar un 4xx repite el mismo error: solo se ofrece en fallos del servidor.
+        // Retrying a 4xx repeats the same error.
         { status, retriable: status >= 500 },
       );
     }
@@ -76,23 +63,18 @@ export function toApiError(error: unknown): ApiError {
   return new ApiError("Ocurrió un error inesperado.", "UNKNOWN", { retriable: true });
 }
 
-/** Cliente hacia la API. */
 export const http: AxiosInstance = axios.create({
   baseURL: config.apiBaseUrl,
   timeout: 15_000,
   headers: { "Content-Type": "application/json" },
 });
 
-/**
- * Adjunta el token de acceso vigente.
- *
- * Se pide en CADA peticion y nunca se guarda una copia: es la libreria de
- * autenticacion quien decide si toca renovar. Cachearlo por nuestra cuenta
- * significa enviar tokens caducados justo cuando alguien lleva rato trabajando.
- *
- * Si no hay sesion, la peticion sale sin cabecera en lugar de fallar: las
- * pantallas publicas tambien usan este cliente.
- */
+// Requested on EVERY request and never cached: the auth library decides when to
+// refresh. Caching it ourselves means sending expired tokens to whoever has been
+// working for a while.
+//
+// With no session the request goes out without the header instead of failing: the
+// public screens use this client too.
 http.interceptors.request.use(async (peticion) => {
   const token = await getAccessToken();
   if (token) {
@@ -101,13 +83,8 @@ http.interceptors.request.use(async (peticion) => {
   return peticion;
 });
 
-/**
- * Manejador de sesion caducada.
- *
- * Lo instala la aplicacion al arrancar, porque este modulo no conoce ni el
- * router ni el cliente de consultas. Sin esto, un rechazo por credenciales
- * dejaria al usuario ante una pantalla que ya no va a funcionar.
- */
+// Installed by the app at startup, because this module knows neither the router
+// nor the query client.
 let alRechazarSesion: (() => void) | null = null;
 
 export function onSessionRejected(manejador: () => void): void {

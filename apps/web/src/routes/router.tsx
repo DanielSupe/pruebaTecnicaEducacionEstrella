@@ -13,12 +13,9 @@ import { LoginPage } from "./LoginPage.js";
 import { SignUpPage } from "./SignUpPage.js";
 import { sessionQuery } from "../lib/session.js";
 
-/**
- * El contexto lleva el cliente de consultas porque beforeLoad corre FUERA de
- * React y no puede usar hooks. Sin esto, la proteccion de rutas tendria que
- * resolver la sesion por su cuenta y acabaria discrepando de lo que ve la
- * interfaz justo en los bordes.
- */
+// The context carries the query client because beforeLoad runs OUTSIDE React and
+// cannot use hooks. Without it, the route guard would resolve the session on its
+// own and diverge from what the interface sees, exactly at the edges.
 type RouterContext = {
   queryClient: QueryClient;
 };
@@ -27,13 +24,8 @@ const rootRoute = createRootRouteWithContext<RouterContext>()({
   component: Outlet,
 });
 
-/**
- * Rama privada.
- *
- * La comprobacion ocurre ANTES de pintar: un guardian que muestra la pantalla y
- * redirige despues deja ver, aunque sea un instante, lo que no debia verse.
- * ensureQueryData reutiliza la sesion ya resuelta si esta fresca.
- */
+// The check happens BEFORE painting: a guard that shows the screen and redirects
+// afterwards reveals, if only for an instant, what should not be seen.
 const privateRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "privada",
@@ -55,7 +47,6 @@ const applicationsRoute = createRoute({
   component: ApplicationsPage,
 });
 
-/** Rama publica: quien ya tiene sesion no deberia estar aqui. */
 const publicRoute = createRoute({
   getParentRoute: () => rootRoute,
   id: "publica",

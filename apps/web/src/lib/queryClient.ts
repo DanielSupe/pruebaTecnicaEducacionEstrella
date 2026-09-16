@@ -1,13 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
 import { ApiError } from "./http.js";
 
-/**
- * Valores por omision de las consultas.
- *
- * El reintento automatico solo tiene sentido ante un fallo del servidor o de red.
- * Reintentar un 4xx repite el mismo error tres veces y solo consigue que el
- * usuario espere mas para ver el mismo mensaje.
- */
+// Automatic retry only makes sense for a server or network failure. Retrying a 4xx
+// repeats the same error three times and only makes the user wait longer to read
+// the same message.
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -21,11 +17,8 @@ export const queryClient = new QueryClient({
   },
 });
 
-/**
- * El interceptor de http.ts rechaza SIEMPRE con un ApiError, asi que declararlo
- * como tipo de error por omision es una afirmacion cierta y no un casteo. Evita
- * tener que anotar el tipo en cada consulta.
- */
+// The interceptor in http.ts ALWAYS rejects with an ApiError, so declaring it as
+// the default error type is a true statement, not a cast.
 declare module "@tanstack/react-query" {
   interface Register {
     defaultError: ApiError;

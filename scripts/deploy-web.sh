@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 #
-# Publica el frontend: construye, sincroniza e invalida.
+# Publishes the frontend: build, sync, invalidate.
 #
-# Los valores salen de las salidas de Terraform, nunca escritos a mano. Si el
-# despliegue se recrea, este script sigue apuntando donde toca sin editarlo.
-#
-# Orden: primero `terraform apply`, luego esto. Al reves no hay bucket donde
-# subir ni distribucion que invalidar.
+# Values come from Terraform outputs, never written by hand. Order matters: run
+# `terraform apply` first, or there is no bucket to upload to.
 set -euo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -28,14 +25,14 @@ CLIENT_ID="$(leer_salida cognito_user_pool_client_id)"
 
 echo "Construyendo el frontend…"
 
-# La direccion de la API es RELATIVA: el frontend y la API se sirven bajo el mismo
-# origen, asi que no hace falta conocer el dominio para construir. Eso rompe el
-# circulo de "necesito el dominio para construir y construir para desplegar".
-# MSYS_NO_PATHCONV solo AQUI, y no exportado para todo el script. Git Bash en
-# Windows convierte los valores que parecen rutas de Unix antes de pasarlos a un
-# programa nativo: "/api/v1" llegaria como "C:/Program Files/Git/api/v1". Pero
-# desactivar la conversion para todo el script rompe las llamadas a terraform,
-# que si necesitan que su ruta se traduzca a formato Windows.
+# The API address is RELATIVE, so the bundle can be built without knowing the
+# domain.
+#
+# MSYS_NO_PATHCONV only HERE, not exported for the whole script: Git Bash on
+# Windows rewrites values that look like Unix paths before passing them to a native
+# program, so "/api/v1" would arrive as "C:/Program Files/Git/api/v1". Disabling the
+# conversion globally breaks the terraform calls, which do need their path
+# translated.
 MSYS_NO_PATHCONV=1 \
 VITE_API_BASE_URL="/api/v1" \
 VITE_COGNITO_USER_POOL_ID="$USER_POOL_ID" \
@@ -47,26 +44,23 @@ DIST="$RAIZ/apps/web/dist"
 
 echo "Subiendo a s3://$BUCKET…"
 
-# Dos pasadas, y el orden importa.
-#
-# Primero todo lo que lleva huella en el nombre: el constructor le pone un hash al
-# contenido, asi que un archivo con ese nombre nunca cambia y puede cachearse un
-# ano. Se sube ANTES que el index para que, cuando el index nuevo empiece a
-# servirse, los archivos a los que apunta ya esten ahi.
+# Two passes, and the order matters. Fingerprinted files first: their names carry a
+# content hash, so they never change and can be cached for a year. They go up BEFORE
+# the index, so that when the new index starts being served the files it points at
+# are already there.
 aws s3 sync "$DIST" "s3://$BUCKET" \
   --delete \
   --exclude "index.html" \
   --cache-control "public, max-age=31536000, immutable"
 
-# Y despues el index, que NO se cachea: es el unico archivo cuyo nombre no cambia
-# nunca, asi que cachearlo dejaria a la gente con la version anterior indefinidamente.
+# The index is NOT cached: it is the only file whose name never changes, so caching
+# it would leave people on the previous version indefinitely.
 aws s3 cp "$DIST/index.html" "s3://$BUCKET/index.html" \
   --cache-control "no-cache, must-revalidate" \
   --content-type "text/html; charset=utf-8"
 
 echo "Invalidando la cache de la distribucion…"
-# La misma conversion de rutas de Git Bash muerde aqui: sin esto, la ruta a
-# invalidar llega como "C:/Program Files/Git/index.html" y CloudFront la rechaza.
+# The same Git Bash path conversion bites here.
 INVALIDACION="$(MSYS_NO_PATHCONV=1 aws cloudfront create-invalidation \
   --distribution-id "$DISTRIBUCION" \
   --paths "/index.html" \

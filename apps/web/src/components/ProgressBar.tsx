@@ -1,13 +1,5 @@
-/**
- * Progreso de la subida.
- *
- * Existe porque una subida de hasta 200 MB tarda minutos: sin indicacion el
- * usuario no distingue "esta subiendo" de "se colgo", y lo normal es que recargue
- * y lo estropee.
- *
- * role="progressbar" con sus valores para que tambien se pueda seguir con un
- * lector de pantalla, y aria-live para que anuncie el avance sin robar el foco.
- */
+// Without an indicator the user cannot tell "uploading" from "hung", and the
+// natural reaction is to reload and ruin it.
 export function ProgressBar({ porcentaje, etiqueta }: { porcentaje: number; etiqueta: string }) {
   const valor = Math.min(100, Math.max(0, Math.round(porcentaje)));
 

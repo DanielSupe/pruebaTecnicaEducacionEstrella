@@ -1,23 +1,13 @@
-/**
- * Filtrado del selector, aparte del componente y sin estado.
- *
- * Vive fuera de Combobox.tsx para poder probarlo sin montar React, que es lo que
- * hace el resto del proyecto: se prueban funciones puras, no componentes.
- */
+// Lives outside Combobox.tsx so it can be tested without mounting React, which is
+// what the rest of the project does: pure functions, not components.
 
-/** Cuantas opciones se pintan como mucho. */
+/** Maximum number of options rendered at once. */
 export const MAX_OPCIONES = 50;
 
-/**
- * Quita tildes y pasa a minusculas.
- *
- * Sin esto, quien escribe "aeronautica" no encuentra "AERONÁUTICOS" y quien
- * escribe "antioquia" no encuentra "ANTIOQUIA". Exigir la tilde exacta convierte
- * la ayuda en un obstaculo, y en un teclado movil es peor todavia.
- *
- * NFD separa cada letra de su tilde, y el rango que se borra son justo esas
- * marcas sueltas.
- */
+// Without this, typing "aeronautica" would not find "AERONÁUTICOS". Requiring the
+// exact accent turns the help into an obstacle, worse still on a mobile keyboard.
+//
+// NFD splits each letter from its accent; the stripped range is those loose marks.
 export function normalizar(texto: string): string {
   return texto
     .normalize("NFD")
@@ -27,21 +17,17 @@ export function normalizar(texto: string): string {
 }
 
 export type Coincidencias = {
-  /** Lo que se pinta: como mucho MAX_OPCIONES. */
+  /** What gets rendered: at most MAX_OPCIONES. */
   visibles: string[];
-  /** Cuantas coinciden en total, que puede ser mas que las visibles. */
+  /** How many match in total, which may exceed the rendered ones. */
   total: number;
 };
 
-/**
- * Opciones que coinciden con lo escrito.
- *
- * Sin texto se ofrece el principio del listado, para que el selector sirva
- * tambien a quien no sabe como se escribe exactamente lo que busca.
- *
- * Con texto que no coincide con nada se devuelve VACIO, no el listado entero:
- * devolver todo le diria al usuario que su busqueda encontro algo.
- */
+// With no text, the start of the list is offered, so the field also helps whoever
+// does not know the exact spelling.
+//
+// With text that matches nothing, returns EMPTY rather than the whole list:
+// returning everything would tell the user their search found something.
 export function coincidencias(opciones: readonly string[], texto: string): Coincidencias {
   const buscado = normalizar(texto);
 

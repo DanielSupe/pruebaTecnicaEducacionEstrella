@@ -57,48 +57,39 @@ variable "log_retention_days" {
   default     = 14
 }
 
-# Tope de ejecuciones simultaneas de la API: limita el gasto y el radio de impacto
-# de una funcion que cualquiera puede invocar.
+# The default of -1 means "no reservation of its own", and it is not neglect: this
+# account has a TOTAL limit of 10 concurrent executions and AWS requires leaving at
+# least 10 unreserved, so reserving any amount is impossible here. The account
+# limit already acts as the cap.
 #
-# El valor por omision es -1, que significa "sin reserva propia", y NO es dejadez:
-# esta cuenta tiene un limite TOTAL de 10 ejecuciones simultaneas, y AWS exige
-# dejar al menos 10 sin reservar. Reservar cualquier cantidad es literalmente
-# imposible aqui. El limite de la cuenta ya actua como tope.
-#
-# En una cuenta con el limite habitual de 1000, esto se pone en un numero concreto
-# y entonces el tope es por funcion, que es lo deseable: asi un abuso de la API no
-# consume la capacidad del resto de funciones.
+# On an account with the usual limit this takes a concrete number, and then the cap
+# is per function, which is what you want.
 variable "api_reserved_concurrency" {
   description = "Ejecuciones simultaneas reservadas para la API. -1 desactiva la reserva."
   type        = number
   default     = -1
 }
 
-# El valor por omision es el correcto para cualquier entorno real: un bucket no
-# deberia poder destruirse con contenido dentro por descuido. Este entorno, que es
-# desechable y vive semanas, opta por salirse en su archivo de variables.
+# The default is the right one for any real environment. This environment, which is
+# disposable, opts out in its own variables file.
 variable "videos_bucket_force_destroy" {
   description = "Permitir destruir el bucket de videos aunque conserve objetos."
   type        = bool
   default     = false
 }
 
-# Dominio propio para servir la aplicacion. Vacio significa "sin dominio propio":
-# se usa el que genera la distribucion y todo funciona igual.
-#
-# Es opcional a proposito. Quien clone este repositorio no tiene por que poseer un
-# dominio, y exigirselo convertiria el despliegue en algo que solo su autor puede
-# reproducir.
+# Optional on purpose: whoever clones this repository does not necessarily own a
+# domain, and requiring one would make the deployment reproducible only by its
+# author.
 variable "web_domain" {
   description = "Subdominio propio para la aplicacion. Vacio para usar el dominio de la distribucion."
   type        = string
   default     = ""
 
   validation {
-    # El vertice de un dominio no admite CNAME: lo prohibe la especificacion del
-    # DNS, porque ahi conviven los registros de autoridad. Haria falta un registro
-    # ALIAS, que es una extension propietaria que la mayoria de registradores no
-    # ofrece. Se exige un subdominio para no fallar a mitad del despliegue.
+    # A domain apex cannot hold a CNAME: the DNS specification forbids it, because
+    # the authority records live there. It would need an ALIAS record, a
+    # proprietary extension most registrars do not offer.
     condition     = var.web_domain == "" || length(split(".", var.web_domain)) >= 3
     error_message = "web_domain debe ser un subdominio (app.ejemplo.com), no el dominio raiz."
   }

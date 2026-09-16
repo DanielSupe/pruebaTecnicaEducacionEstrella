@@ -1,9 +1,7 @@
 import type { RequestHandler } from "express";
 import { UnauthorizedError } from "../errors.js";
 
-/** Identidad del solicitante, tomada del token ya verificado. */
 export type AuthenticatedUser = {
-  /** Identificador estable del usuario en el directorio. Nunca sale del cuerpo. */
   userId: string;
 };
 
@@ -16,13 +14,8 @@ declare global {
   }
 }
 
-/**
- * Lo minimo que el middleware necesita de un verificador de tokens.
- *
- * Se declara aqui, y no se importa el tipo concreto de la libreria, para que las
- * pruebas puedan pasar un doble sin red ni credenciales. No es una abstraccion
- * especulativa: es el parametro que hace probable este middleware.
- */
+// Declared here rather than importing the library type so tests can pass a double
+// without network or credentials.
 export type AccessTokenVerifier = {
   verify(token: string): Promise<{ sub: string }>;
 };
@@ -38,13 +31,8 @@ function extractToken(header: string | undefined): string {
   return match[1];
 }
 
-/**
- * Exige un token de acceso valido y expone la identidad a los manejadores
- * posteriores.
- *
- * Se monta por grupo de rutas, nunca de forma global: la comprobacion de vida
- * tiene que seguir respondiendo sin credenciales.
- */
+// Mounted per route group, never globally: the health check must keep answering
+// without credentials.
 export function authenticate(verifier: AccessTokenVerifier): RequestHandler {
   return (req, _res, next) => {
     void (async () => {
@@ -52,8 +40,8 @@ export function authenticate(verifier: AccessTokenVerifier): RequestHandler {
         const token = extractToken(req.headers.authorization);
         const payload = await verifier.verify(token);
 
-        // La identidad sale del token verificado. Si el cuerpo trae un userId,
-        // aqui se sobreescribe: el cliente no decide quien es.
+        // If the body carries a userId it is overwritten here: the client does
+        // not get to decide who it is.
         req.user = { userId: payload.sub };
 
         next();
@@ -63,8 +51,7 @@ export function authenticate(verifier: AccessTokenVerifier): RequestHandler {
           return;
         }
 
-        // El motivo real (caducado, firma invalida, cliente ajeno) se registra
-        // en el servidor y no viaja al cliente.
+        // The real reason is logged server-side and never travels to the client.
         console.error("Token rechazado:", error);
         next(new UnauthorizedError());
       }

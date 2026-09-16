@@ -1,8 +1,6 @@
-# Estos valores los consumen apps/api y apps/web.
-#
-# No se transcriben a mano a ningun archivo de codigo: scripts/gen-env.sh los lee
-# de "terraform output -json" y genera los .env. La alternativa real a un script no
-# es "copiarlos con cuidado", es copiarlos mal alguna vez.
+# Never transcribed by hand into any code file: scripts/gen-env.sh reads them from
+# "terraform output -json". The real alternative to a script is not "copying them
+# carefully", it is getting one wrong eventually.
 
 output "aws_region" {
   description = "Region donde vive la infraestructura."
@@ -54,8 +52,7 @@ output "api_gateway_url" {
   value       = aws_apigatewayv2_api.api.api_endpoint
 }
 
-# El registro que hay que anadir en el proveedor de DNS para validar el
-# certificado. Se publica como salida para no tener que leerlo del estado.
+# The record to add at the DNS provider to validate the certificate.
 output "certificate_validation_record" {
   description = "Registro CNAME de validacion del certificado. Vacio si no hay dominio propio."
   value = var.web_domain == "" ? null : {

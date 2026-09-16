@@ -28,12 +28,11 @@ export function SignUpPage() {
         options: { userAttributes: { email: datos.email } },
       });
 
-      // Se llama al MISMO inicio de sesion que usa la pantalla de acceso, en
-      // lugar del automatico de la libreria: un solo camino ya probado en vez
-      // de dos con comportamientos distintos ante errores.
+      // Calls the SAME sign-in the login screen uses, rather than the library's
+      // automatic one: one tested path instead of two that fail differently.
       //
-      // Si esto falla, la cuenta YA existe. Decir "error al registrarse" haria
-      // que el usuario lo reintentara y chocara con un correo ya ocupado.
+      // If this fails, the account ALREADY exists. Saying "sign-up failed" would
+      // make the user retry and hit an address that is now taken.
       try {
         await signIn({
           username: datos.email,

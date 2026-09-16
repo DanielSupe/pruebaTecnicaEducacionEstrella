@@ -19,7 +19,7 @@ const OTRO = "ffffffff-0000-0000-0000-000000000000";
 
 const repositorio = createApplicationsRepository(CONFIG);
 
-/** Lee la entrada del comando que se envió, para afirmar sobre lo que se consultó. */
+/** Reads the sent command input, to assert on what was queried. */
 function ultimaConsulta(): Record<string, unknown> {
   return (enviar.mock.calls[0]?.[0] as { input: Record<string, unknown> }).input;
 }
@@ -36,13 +36,12 @@ describe("listApplications: cómo se consulta", () => {
     const input = ultimaConsulta();
     expect(input.KeyConditionExpression).toBe("PK = :pk");
     expect(input.ExpressionAttributeValues).toEqual({ ":pk": `USER#${USUARIO}` });
-    // Un FilterExpression significaria leer de mas y descartar despues.
+    // A FilterExpression would mean reading more and discarding afterwards.
     expect(input.FilterExpression).toBeUndefined();
   });
 
   it("recorre en orden descendente: las más recientes primero", async () => {
-    // El identificador de la clave de ordenacion ordena por tiempo, asi que
-    // basta con recorrerla al reves. Sin indice y sin ordenar en memoria.
+    // The sort key orders by time, so scanning backwards is enough.
     await repositorio.listApplications(USUARIO, { limit: 20 });
 
     expect(ultimaConsulta().ScanIndexForward).toBe(false);
@@ -91,9 +90,8 @@ describe("listApplications: el puntero de continuación", () => {
 
 describe("listApplications: un puntero manipulado no da acceso a datos ajenos", () => {
   it("la partición se construye con la identidad recibida, NO con la del puntero", async () => {
-    // Este es el punto de seguridad del listado. Aunque alguien fabrique un
-    // puntero que nombre la particion de otro usuario, la consulta se hace
-    // siempre contra la suya.
+    // The security point of the listing: even with a forged cursor naming another
+    // partition, the query always runs against the caller's own.
     const cursorAjeno = Buffer.from(
       JSON.stringify({ PK: `USER#${OTRO}`, SK: "APP#01HXYZ" }),
       "utf8",
@@ -111,7 +109,7 @@ describe("listApplications: un puntero manipulado no da acceso a datos ajenos", 
     ["decodifica a algo que no es una clave", "cXVpZW4tc2FiZQ"],
     ["intenta nombrar otra partición", "VVNFUiNvdHJv"],
   ])("un puntero que %s se trata como primera página", async (_caso, cursor) => {
-    // Un cursor corrupto en la URL no deberia producir un error del servidor.
+    // A corrupt cursor in a URL should not produce a server error.
     await expect(
       repositorio.listApplications(USUARIO, { limit: 20, cursor }),
     ).resolves.toBeDefined();

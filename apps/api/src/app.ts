@@ -10,17 +10,12 @@ import { createApplicationsRouter } from "./features/applications/routes.js";
 import { createApplicationsRepository } from "./features/applications/repository.js";
 import { createVideoStorage } from "./features/applications/uploads.js";
 
-/** Cuerpo maximo aceptado. La API nunca recibe archivos: el video va directo a S3
- *  con una politica firmada, asi que el cuerpo mas grande son unos cientos de bytes
- *  de formulario. Aceptar mas solo abre superficie. */
+// The API never receives files: the video goes straight to S3. The largest body is
+// a few hundred bytes of form data, so accepting more only widens the surface.
 const JSON_BODY_LIMIT = "16kb";
 
-/**
- * Construye la aplicacion sin escuchar en ningun puerto.
- *
- * Esa separacion es lo que permite que las pruebas la ejerciten sin abrir sockets,
- * y lo que hara trivial montarla sobre Lambda mas adelante.
- */
+// Builds the app without listening on a port. That separation is what lets the
+// tests exercise it without sockets, and what makes the Lambda adapter trivial.
 export type AppDependencies = Pick<
   AppConfig,
   "corsAllowedOrigins" | "awsRegion" | "applicationsTableName" | "videosBucketName"
@@ -34,11 +29,9 @@ export function createApp(config: AppDependencies, verifier: AccessTokenVerifier
   app.use(cors({ origin: config.corsAllowedOrigins }));
   app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
-  // La comprobacion de vida va SIN autenticar: exigirle credenciales la
-  // inutilizaria para lo que existe, que es responder si el proceso esta en pie.
+  // Unauthenticated on purpose: requiring credentials would defeat what it is for.
   app.use("/api/v1", healthRouter);
 
-  // El middleware se monta por grupo de rutas, nunca con app.use global.
   const autenticar = authenticate(verifier);
   app.use("/api/v1", createMeRouter(autenticar));
   app.use(
@@ -50,8 +43,8 @@ export function createApp(config: AppDependencies, verifier: AccessTokenVerifier
     ),
   );
 
-  // El orden importa: primero las rutas, luego el 404, y el manejador de errores
-  // al final. Montarlo antes lo dejaria sin efecto.
+  // Order matters: routes, then 404, then the error handler. Mounting it earlier
+  // would leave it with no effect.
   app.use(notFoundHandler);
   app.use(errorHandler);
 

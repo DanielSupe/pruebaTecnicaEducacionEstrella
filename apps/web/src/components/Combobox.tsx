@@ -1,21 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { coincidencias } from "./filtrar.js";
 
-/**
- * Campo de texto con sugerencias que se filtran al escribir.
- *
- * SUGIERE, no obliga: lo escrito se acepta aunque no esté en la lista. Es
- * deliberado — el listado solo cubre instituciones colombianas de educación
- * superior, y exigir que el valor figure en él dejaría fuera a quien estudie en
- * el extranjero.
- *
- * Sigue la forma de Field.tsx (etiqueta, error bajo el campo, aria-invalid y
- * aria-describedby) para que el formulario no tenga dos estilos de campo.
- *
- * Se construye a mano en lugar de usar <datalist> porque el desplegable nativo lo
- * dibuja el navegador y se ve distinto en cada uno. El precio es tener que poner
- * a mano los roles ARIA y el teclado, que es justo lo que el nativo regala.
- */
+// SUGGESTS, it does not restrict: typed text is accepted even when absent from the
+// list. The dataset only covers Colombian higher education, so requiring a match
+// would shut out anyone studying abroad.
+//
+// Hand-built instead of <datalist> because the native dropdown is drawn by the
+// browser and looks different in each one.
 export function Combobox({
   id,
   label,
@@ -33,12 +24,12 @@ export function Combobox({
   onChange: (valor: string) => void;
   error?: string;
   disabled?: boolean;
-  /** Texto bajo el campo cuando no hay error. */
+  /** Help text shown below the field when there is no error. */
   ayuda?: string;
 }) {
   const [abierto, setAbierto] = useState(false);
-  // Índice de la opción resaltada, o -1 si ninguna. No es lo mismo que el foco:
-  // el foco se queda SIEMPRE en el campo para que se pueda seguir escribiendo.
+  // Highlighted option, or -1. Not the same as focus: focus stays ALWAYS on the
+  // input so typing can continue.
   const [resaltada, setResaltada] = useState(-1);
 
   const campo = useRef<HTMLInputElement>(null);
@@ -51,7 +42,6 @@ export function Combobox({
   const { visibles, total } = coincidencias(opciones, value);
   const hayOpciones = visibles.length > 0;
 
-  // Clic fuera: cierra sin tocar lo escrito.
   useEffect(() => {
     if (!abierto) return;
 
@@ -67,8 +57,7 @@ export function Combobox({
     onChange(opcion);
     setAbierto(false);
     setResaltada(-1);
-    // El foco vuelve al campo: quien navega con teclado no debe quedarse sin
-    // punto de partida al cerrarse la lista.
+    // Focus returns to the input so keyboard users keep a starting point.
     campo.current?.focus();
   }
 
@@ -79,8 +68,7 @@ export function Combobox({
   }
 
   function alPulsarTecla(evento: React.KeyboardEvent<HTMLInputElement>) {
-    // Tabulador NO se intercepta: sale del campo conservando lo escrito, que es
-    // lo que espera quien no quiere ninguna sugerencia.
+    // Tab is NOT intercepted: it leaves the field keeping what was typed.
     if (evento.key === "Escape") {
       setAbierto(false);
       setResaltada(-1);
@@ -98,15 +86,13 @@ export function Combobox({
       if (!hayOpciones) return;
 
       const paso = evento.key === "ArrowDown" ? 1 : -1;
-      // Da la vuelta por los dos extremos: llegar al final y quedarse atascado
-      // obliga a recorrer la lista entera para volver arriba.
       setResaltada((actual) => (actual + paso + visibles.length) % visibles.length);
       return;
     }
 
     if (evento.key === "Enter" && abierto && resaltada >= 0) {
-      // Solo se intercepta si hay algo resaltado: si no, Enter debe enviar el
-      // formulario como en cualquier otro campo.
+      // Only intercepted when something is highlighted: otherwise Enter must
+      // submit the form as in any other field.
       evento.preventDefault();
       const opcion = visibles[resaltada];
       if (opcion) elegir(opcion);
@@ -148,8 +134,6 @@ export function Combobox({
         ].join(" ")}
       />
 
-      {/* Cuántas opciones hay, para quien no las ve. Se anuncia sin robar el
-          foco, que sigue en el campo mientras se escribe. */}
       <p className="sr-only" aria-live="polite">
         {abierto
           ? total === 0
@@ -165,8 +149,8 @@ export function Combobox({
           aria-label={label}
           className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg"
         >
-          {/* Sin coincidencias se dice que no hay. Ofrecer el listado entero le
-              diría al usuario que su búsqueda encontró algo. */}
+          {/* Offering the whole list here would tell the user their search
+              matched something. */}
           {!hayOpciones && (
             <li className="px-3 py-3 text-sm text-slate-600">
               Ninguna institución coincide. Puedes escribir el nombre completo.
@@ -179,11 +163,10 @@ export function Combobox({
               id={`${idLista}-${String(indice)}`}
               role="option"
               aria-selected={indice === resaltada}
-              // El ratón resalta lo mismo que las flechas, para que no haya dos
-              // nociones distintas de "la opción actual".
+              // The mouse highlights the same thing as the arrows.
               onMouseEnter={() => setResaltada(indice)}
-              // mousedown y no click: el click llega después de que el campo
-              // pierda el foco, y para entonces la lista ya se cerró.
+              // mousedown, not click: click arrives after the input loses focus,
+              // and by then the list has already closed.
               onMouseDown={(e) => {
                 e.preventDefault();
                 elegir(opcion);

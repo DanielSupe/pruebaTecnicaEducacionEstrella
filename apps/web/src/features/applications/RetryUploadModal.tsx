@@ -14,18 +14,12 @@ import {
   esCancelacion,
 } from "./upload.js";
 
-/**
- * Completa la subida de una solicitud que quedo pendiente de video.
- *
- * Deliberadamente NO se llama reanudar, ni en el codigo ni en la interfaz. Un
- * File no sobrevive a una recarga: cuando alguien vuelve al listado, el
- * navegador ya no tiene el archivo. Prometer "reanudar" y acto seguido pedir el
- * video otra vez se lee como un fallo de la aplicacion.
- *
- * Lo que si se reutiliza es la SOLICITUD: se pide una autorizacion nueva sobre
- * la misma, en lugar de registrar otra. Crear una por intento fallido dejaria
- * huerfanas y obligaria a rellenar el formulario entero.
- */
+// Deliberately NOT called resuming, neither in the code nor in the interface: a
+// File does not survive a reload, so the browser no longer has it. Promising to
+// resume and then asking for the video again reads as a failure.
+//
+// What IS reused is the APPLICATION: a new authorization over the same one, rather
+// than registering another.
 export function RetryUploadModal({
   applicationId,
   abierto,
@@ -57,9 +51,7 @@ export function RetryUploadModal({
       return;
     }
 
-    // Se valida ANTES de transferir, con el mismo esquema que aplica el
-    // servidor. Rechazar aqui evita gastar ancho de banda en algo que el
-    // almacenamiento va a rechazar de todos modos.
+    // Validated BEFORE transferring, with the same schema the server applies.
     const valido = videoFileSchema.safeParse({
       contentType: archivo.type,
       sizeBytes: archivo.size,
@@ -76,8 +68,8 @@ export function RetryUploadModal({
     setProgreso(0);
 
     try {
-      // La autorizacion anterior pudo caducar: se pide una nueva sobre la MISMA
-      // solicitud.
+      // The previous authorization may have expired: a new one over the SAME
+      // application.
       const autorizacion = await renovarAutorizacion(applicationId);
 
       await transferirVideo(autorizacion, archivo, {
@@ -87,8 +79,8 @@ export function RetryUploadModal({
 
       await avisarSubidaCompletada(applicationId);
     } catch (error) {
-      // Cancelar es deliberado: no hay nada que reportar. Sin esta distincion,
-      // al usuario le saldria un error por algo que acaba de pedir el mismo.
+      // Cancelling is deliberate: without this distinction the user would get an
+      // error for something they just asked for.
       if (esCancelacion(error)) return;
 
       setErrorSubida(
@@ -100,7 +92,7 @@ export function RetryUploadModal({
       setProgreso(null);
     }
 
-    // La fila cambia de estado sin que nadie tenga que recargar.
+    // The row changes state without anyone reloading.
     await queryClient.invalidateQueries({ queryKey: applicationsQueryKey });
     cerrarYLimpiar();
   }
@@ -118,7 +110,8 @@ export function RetryUploadModal({
       return;
     }
 
-    // Perder una subida casi terminada por un descuido es peor que el clic de mas.
+    // Losing an almost-finished upload to a stray click is worse than one extra
+    // click.
     const confirmado = await confirmar({
       titulo: "¿Cancelar la subida?",
       mensaje: "Se detendrá la transferencia y tendrás que volver a subir el video.",
@@ -128,7 +121,7 @@ export function RetryUploadModal({
 
     if (!confirmado) return;
 
-    // Aborta la peticion de verdad, no solo deja de mostrar el progreso.
+    // Aborts the request for real, not just hides the progress.
     cancelacion.current?.abort();
     cerrarYLimpiar();
   }
@@ -159,9 +152,8 @@ export function RetryUploadModal({
           </div>
         )}
 
-        {/* El fallo se explica aqui dentro, con el reintento a un clic: obligar
-            a cerrar y buscar el boton otra vez cumple la letra y no la
-            intencion. */}
+        {/* Explained in here with the retry one click away: forcing a close
+            and a hunt for the button meets the letter and not the intent. */}
         {errorSubida && (
           <div
             role="alert"

@@ -10,7 +10,7 @@ import { fechaLegible, montoLegible } from "../features/applications/format.js";
 import { RetryUploadModal } from "../features/applications/RetryUploadModal.js";
 import { VideoModal } from "../features/applications/VideoModal.js";
 
-/** Ventana abierta sobre una solicitud concreta, o ninguna. */
+/** The dialog open on a given application, or none. */
 type Ventana = { tipo: "subir" | "ver"; applicationId: string } | null;
 
 export function ApplicationsPage() {
@@ -56,9 +56,8 @@ export function ApplicationsPage() {
         )}
       </div>
 
-      {/* Las ventanas se montan con la solicitud sobre la que se abrieron. La
-          clave las obliga a empezar de cero al cambiar de solicitud, en vez de
-          arrastrar el archivo elegido para otra. */}
+      {/* The key forces a fresh mount per application, so a file chosen for one
+          is not dragged into another. */}
       {ventana?.tipo === "subir" && (
         <RetryUploadModal
           key={ventana.applicationId}
@@ -80,7 +79,7 @@ export function ApplicationsPage() {
   );
 }
 
-/** Una accion por fila: la que corresponde al estado en que esta. */
+// One action per row: the one that matches its state.
 function Accion({
   solicitud,
   onAbrir,
@@ -111,12 +110,8 @@ function Accion({
   );
 }
 
-/**
- * Tabla, a partir de 768 px.
- *
- * Lo que se duplica entre esta y las tarjetas es la DISPOSICION, no la logica:
- * el distintivo y la accion salen de los mismos componentes.
- */
+// What is duplicated between this and the cards is the LAYOUT, not the logic: the
+// badge and the action come from the same components.
 function Tabla({
   solicitudes,
   onAbrir,
@@ -165,11 +160,6 @@ function Tabla({
   );
 }
 
-/**
- * Tarjetas, por debajo de 768 px.
- *
- * Son seis columnas: forzar desplazamiento horizontal seria la salida perezosa.
- */
 function Tarjetas({
   solicitudes,
   onAbrir,
@@ -211,10 +201,8 @@ function Tarjetas({
   );
 }
 
-/**
- * Esqueleto con la forma del contenido que va a llegar, no un indicador
- * centrado: asi la pagina no da un salto cuando la respuesta aterriza.
- */
+// Shaped like the content that is coming, not a centred spinner, so the page does
+// not jump when the response lands.
 function Esqueleto() {
   return (
     <div className="animate-pulse space-y-3" aria-live="polite" aria-busy="true">
@@ -226,11 +214,9 @@ function Esqueleto() {
   );
 }
 
-/**
- * No tener solicitudes es el estado normal de quien acaba de registrarse, no un
- * error. Y dice QUE HACER: una tabla vacia sin explicacion deja al usuario
- * preguntandose si fallo algo.
- */
+// Having none is the normal state of someone who just signed up, not an error. It
+// says WHAT TO DO: an empty table with no explanation leaves the user wondering
+// whether something failed.
 function SinSolicitudes() {
   return (
     <div className="rounded-lg border border-slate-200 bg-white py-12 text-center">
@@ -249,11 +235,8 @@ function SinSolicitudes() {
   );
 }
 
-/**
- * Error al CARGAR la vista: va en linea, donde iria el contenido. Una ventana
- * emergente sobre una pantalla vacia deja al usuario cerrandola para mirar la
- * nada.
- */
+// A failure to LOAD goes inline, where the content would be. A dialog over an
+// empty screen leaves the user closing it to stare at nothing.
 function ErrorDeCarga({ error, onReintentar }: { error: ApiError; onReintentar: () => void }) {
   return (
     <div

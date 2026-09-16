@@ -4,14 +4,10 @@ import { Modal } from "../../components/Modal.js";
 import { Button } from "../../components/Button.js";
 import { http } from "../../lib/http.js";
 
-/**
- * Reproduce el video de una solicitud ya enviada.
- *
- * El enlace se pide AL ABRIR y no se guarda para reutilizarlo: caduca a los
- * quince minutos y lleva la firma dentro, asi que es una credencial. Cachearlo
- * "para la proxima vez" produciria un fallo incomprensible mas tarde, y
- * alargaria la vida de algo pensado para durar poco.
- */
+// The link is requested ON OPEN and never kept: it expires in fifteen minutes and
+// carries the signature inside, so it is a credential. Caching it "for next time"
+// would produce a baffling failure later and extend the life of something meant to
+// be short.
 async function pedirEnlace(applicationId: string): Promise<VideoLink> {
   const { data } = await http.get<VideoLink>(`/applications/${applicationId}/video-url`);
   return data;
@@ -29,8 +25,7 @@ export function VideoModal({
   const consulta = useQuery({
     queryKey: ["video-url", applicationId],
     queryFn: () => pedirEnlace(applicationId),
-    // Solo se pide cuando la ventana esta abierta, y nunca se reutiliza el
-    // anterior: el enlace caduca.
+
     enabled: abierto,
     gcTime: 0,
     staleTime: 0,
@@ -48,8 +43,8 @@ export function VideoModal({
           </div>
         )}
 
-        {/* El fallo se explica en la misma ventana desde la que se pidio, que es
-            donde esta mirando quien lo pidio. */}
+        {/* Explained in the same dialog it was asked from, which is where whoever
+            asked is looking. */}
         {consulta.isError && (
           <div
             role="alert"

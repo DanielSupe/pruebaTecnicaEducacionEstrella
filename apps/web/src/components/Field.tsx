@@ -7,14 +7,8 @@ type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
   ref?: Ref<HTMLInputElement>;
 };
 
-/**
- * Campo de formulario con su etiqueta y su error.
- *
- * El error se enlaza con aria-describedby y el campo se marca con aria-invalid:
- * sin eso, quien use un lector de pantalla oye el campo pero no por que esta mal.
- * El placeholder no sustituye a la etiqueta, porque desaparece justo cuando hace
- * falta leerla.
- */
+// A placeholder does not replace the label: it disappears exactly when it needs
+// reading.
 export function Field({ id, label, error, ref, className, ...props }: FieldProps) {
   const idError = `${id}-error`;
 

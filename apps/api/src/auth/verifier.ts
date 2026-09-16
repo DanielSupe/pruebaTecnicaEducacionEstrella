@@ -1,20 +1,15 @@
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import type { AppConfig } from "../config/env.js";
 
-/**
- * Verificador de tokens de acceso de Cognito.
- *
- * Las dos opciones que importan para la seguridad no son la firma, que la libreria
- * comprueba siempre, sino estas:
- *
- * - tokenUse "access": sin fijarlo, un token de identidad valido pasaria. El de
- *   identidad describe al usuario para el propio cliente; el de acceso es el que
- *   autoriza a llamar a este servicio.
- *
- * - clientId: un token firmado por ESTE mismo directorio de usuarios pero emitido
- *   para otro cliente es criptograficamente valido. Comprobar solo la firma
- *   responde "el token es autentico"; hay que responder "el token es para mi".
- */
+// The two options that matter for security are not the signature, which the
+// library always checks, but these:
+//
+// - tokenUse "access": without it, a valid ID token would pass. The ID token
+//   describes the user to the client; the access token authorises calling us.
+//
+// - clientId: a token signed by THIS same user pool but issued for another client
+//   is cryptographically valid. Checking the signature answers "the token is
+//   genuine"; we must answer "the token is for me".
 export function createAccessTokenVerifier(
   config: Pick<AppConfig, "cognitoUserPoolId" | "cognitoClientId">,
 ) {

@@ -1,15 +1,7 @@
 import { distintivoDeEstado } from "../features/applications/format.js";
 
-/**
- * Distintivo de estado de una solicitud.
- *
- * Lleva TEXTO, no solo color: quien no distinga los tonos tiene que poder leer
- * en que estado esta. Y el texto es el del dominio en espanol, nunca el
- * identificador interno.
- *
- * La traduccion vive en format.ts, con la de la fecha y el monto: son la misma
- * clase de decision y ademas asi se puede probar sin montar React.
- */
+// Carries TEXT, not only colour: whoever cannot tell the shades apart must still
+// be able to read the state.
 export function StatusBadge({ estado }: { estado: string }) {
   const { texto, clases } = distintivoDeEstado(estado);
 

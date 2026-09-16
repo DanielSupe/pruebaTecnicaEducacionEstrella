@@ -1,31 +1,19 @@
 import { z } from "zod";
 
-/**
- * Configuracion del frontend.
- *
- * Diferencia importante respecto a la API: aqui los valores se incrustan en
- * tiempo de CONSTRUCCION. Una variable ausente no se manifiesta al desplegar,
- * se manifiesta como una pantalla rota para el usuario. Por eso la construccion
- * es el ultimo momento en que se puede detectar, y por eso esto falla ruidosamente.
- *
- * Este es el UNICO archivo que lee import.meta.env.
- */
+// Values are baked in at BUILD time. A missing variable does not show up at deploy
+// time: it shows up as a broken screen for the user. The build is the last moment
+// it can be caught.
+//
+// This is the ONLY file that reads import.meta.env.
 const envSchema = z.object({
-  // Dos formas legitimas, y ninguna mas.
+  // Two legitimate forms: an absolute URL with protocol (local development, where
+  // the API lives on another origin) and a root-relative path (cloud, where both
+  // share an origin, which also lets the bundle be built without knowing the
+  // domain).
   //
-  // Absoluta con protocolo: la API vive en otro origen. Es el caso del desarrollo
-  // local, donde el navegador esta en el 5173 y la API en el 3000.
-  //
-  // Ruta desde la raiz: frontend y API comparten origen, que es como se sirve en
-  // la nube. Ademas rompe un circulo, porque el dominio solo se conoce al aplicar
-  // la infraestructura y el paquete hay que construirlo antes de subirlo: una
-  // ruta relativa no necesita saber el dominio.
-  //
-  // Lo que se sigue rechazando: una absoluta SIN protocolo. z.url() por si sola
-  // acepta "localhost:3000", porque lo lee como esquema "localhost:" con ruta
-  // "3000", y olvidar el http:// es el error de configuracion mas comun. Y una
-  // ruta que no empiece por barra, que se resolveria contra la pagina actual y
-  // funcionaria o no segun desde donde se navegue.
+  // Still rejected: an absolute URL WITHOUT protocol. z.url() on its own accepts
+  // "localhost:3000", reading it as scheme "localhost:" with path "3000", and
+  // forgetting http:// is the most common configuration mistake.
   VITE_API_BASE_URL: z
     .string({ error: "VITE_API_BASE_URL es obligatoria" })
     .trim()
@@ -46,9 +34,8 @@ const envSchema = z.object({
       },
     ),
 
-  // Identificadores del directorio de usuarios. No son secretos: viajan en el
-  // paquete que descarga el navegador. Pero sin valor por omision, porque
-  // apuntar al directorio equivocado parece funcionar hasta que no funciona.
+  // Not secrets: they travel in the downloaded bundle. But no defaults, because
+  // pointing at the wrong user pool looks like it works until it does not.
   VITE_COGNITO_USER_POOL_ID: z
     .string({ error: "VITE_COGNITO_USER_POOL_ID es obligatoria" })
     .trim()
@@ -77,7 +64,7 @@ export function loadConfig(source: Record<string, unknown> = import.meta.env): W
   }
 
   return {
-    // Se quita la barra final para no acabar construyendo rutas con doble barra.
+    // Trailing slash removed to avoid building paths with a double slash.
     apiBaseUrl: parsed.data.VITE_API_BASE_URL.replace(/\/+$/, ""),
     cognitoUserPoolId: parsed.data.VITE_COGNITO_USER_POOL_ID,
     cognitoClientId: parsed.data.VITE_COGNITO_CLIENT_ID,

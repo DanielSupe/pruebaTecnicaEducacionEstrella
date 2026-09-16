@@ -1,8 +1,4 @@
-# Bucket del frontend.
-#
-# Privado, igual que el de videos. Lo unico que puede leerlo es la distribucion,
-# mediante control de acceso de origen. Un bucket publico es una de las senales
-# que el enunciado penaliza de forma explicita.
+# Private. Only the distribution can read it, through origin access control.
 resource "aws_s3_bucket" "web" {
   bucket        = "${var.project_name}-web-${random_id.bucket_suffix.hex}"
   force_destroy = true # Solo contiene artefactos de construccion: se regeneran.
@@ -34,27 +30,20 @@ resource "aws_cloudfront_origin_access_control" "web" {
   signing_protocol                  = "sigv4"
 }
 
-# Cabeceras de seguridad.
+# The content security policy is the concrete counterpart of keeping tokens in
+# browser storage. What makes that risk acceptable is that no foreign script can
+# run: script-src 'self', no unsafe-inline, no unsafe-eval.
 #
-# La politica de seguridad de contenido es la contrapartida concreta de guardar los
-# tokens en el almacenamiento del navegador, que es lo que implica una sesion
-# persistente en una aplicacion de pagina unica. Lo que hace ese riesgo asumible es
-# que no haya forma de ejecutar script ajeno: script-src 'self', sin unsafe-inline
-# y sin unsafe-eval.
+# style-src DOES carry unsafe-inline, and that is a real concession: the dialog
+# library injects its stylesheet at runtime and the progress bar sets its width
+# with a style attribute.
 #
-# style-src SI lleva unsafe-inline, y es una concesion real que conviene no
-# esconder: la libreria de ventanas emergentes inyecta su hoja en tiempo de
-# ejecucion y la barra de progreso fija su ancho con un atributo de estilo. El
-# riesgo es de otro orden que el del script.
+# Storage appears in TWO directives because they are two different uses:
+# connect-src for the upload, which is a request, and media-src for playback, which
+# is a video element. Forgetting the second breaks playback only.
 #
-# El almacenamiento aparece en DOS directivas porque son dos usos distintos:
-# connect-src para la subida, que es una peticion; media-src para la reproduccion,
-# que es un elemento de video. Olvidar la segunda rompe justo la funcionalidad del
-# change 12.
-#
-# default-src 'none' y no 'self': obliga a que toda directiva sea explicita, de
-# modo que lo que falte aparezca en la consola durante la verificacion en lugar de
-# pasar desapercibido.
+# default-src 'none' rather than 'self': it forces every directive to be explicit,
+# so whatever is missing shows up in the console during verification.
 locals {
   cognito_origin = "https://cognito-idp.${var.aws_region}.amazonaws.com"
   videos_origin  = "https://${aws_s3_bucket.videos.id}.s3.${var.aws_region}.amazonaws.com"
@@ -98,8 +87,8 @@ resource "aws_cloudfront_response_headers_policy" "web" {
       override        = true
     }
 
-    # Sin precarga: el dominio por omision de la distribucion es compartido con
-    # otras cuentas, y pedir precarga sobre el afectaria a terceros.
+    # No preload: the distribution's default domain is shared with other accounts,
+    # and requesting preload on it would affect third parties.
     strict_transport_security {
       access_control_max_age_sec = 31536000
       include_subdomains         = false
@@ -109,8 +98,7 @@ resource "aws_cloudfront_response_headers_policy" "web" {
   }
 }
 
-# Politicas gestionadas. Se referencian por nombre en lugar de por identificador
-# escrito a mano: el identificador es opaco y no dice que hace.
+# Referenced by name rather than by hand-written id: the id is opaque.
 data "aws_cloudfront_cache_policy" "optimizada" {
   name = "Managed-CachingOptimized"
 }
@@ -119,12 +107,9 @@ data "aws_cloudfront_cache_policy" "sin_cache" {
   name = "Managed-CachingDisabled"
 }
 
-# Reenvia todas las cabeceras del visitante EXCEPTO la de anfitrion.
-#
-# Las dos mitades importan. La cabecera de autorizacion tiene que llegar hasta la
-# API o no funciona ninguna peticion autenticada. Y la de anfitrion tiene que
-# quedarse fuera: la puerta de enlace responde 403 si recibe un anfitrion que no es
-# el suyo. Esta politica existe exactamente para este caso.
+# Forwards every viewer header EXCEPT Host. Both halves matter: Authorization must
+# reach the API or no authenticated request works, and Host must stay out because
+# API Gateway answers 403 to a Host that is not its own.
 data "aws_cloudfront_origin_request_policy" "todo_menos_anfitrion" {
   name = "Managed-AllViewerExceptHostHeader"
 }
@@ -134,15 +119,13 @@ resource "aws_cloudfront_distribution" "web" {
   default_root_object = "index.html"
   comment             = "${var.project_name}: frontend y API bajo un unico origen"
 
-  # Norteamerica y Europa. La clase mas barata basta para una demo y evita
-  # distribuir a regiones que nadie va a usar.
+
   price_class = "PriceClass_100"
 
-  # El dominio propio se SUMA: el que genera la distribucion sigue sirviendo, lo
-  # que deja una direccion de reserva si el DNS tarda en propagarse.
+  # The custom domain is ADDED: the generated one keeps serving as a fallback.
   #
-  # Un nombre que no figure aqui se rechaza, y eso es lo que impide que alguien
-  # apunte su dominio a esta distribucion y sirva nuestra aplicacion bajo su marca.
+  # A name not listed here is rejected, which is what stops someone pointing their
+  # domain at this distribution and serving our application under their brand.
   aliases = var.web_domain == "" ? [] : [var.web_domain]
 
   origin {
@@ -174,12 +157,9 @@ resource "aws_cloudfront_distribution" "web" {
     response_headers_policy_id = aws_cloudfront_response_headers_policy.web.id
   }
 
-  # La API: sin cache y con las cabeceras del visitante.
-  #
-  # Que no se cachee no es una optimizacion al reves: son respuestas autenticadas
-  # y distintas para cada solicitante. Una respuesta cacheada de la lista de
-  # solicitudes serviria las de una persona a otra, que es exactamente el
-  # aislamiento que sostiene todo el modelo de datos.
+  # Not caching is not an optimisation in reverse: these are authenticated
+  # responses, different for every applicant. A cached listing would serve one
+  # person's applications to another.
   ordered_cache_behavior {
     path_pattern           = "/api/*"
     target_origin_id       = "api"
@@ -192,9 +172,8 @@ resource "aws_cloudfront_distribution" "web" {
     origin_request_policy_id = data.aws_cloudfront_origin_request_policy.todo_menos_anfitrion.id
   }
 
-  # El enrutado lo resuelve el navegador, asi que en el bucket no existe ningun
-  # archivo para /solicitudes/nueva. Sin esto, recargar ahi devuelve el error de
-  # S3 en lugar de la aplicacion.
+  # Routing is resolved by the browser, so no file exists in the bucket for a
+  # client route. Without this, reloading there returns the S3 error.
   custom_error_response {
     error_code            = 403
     response_code         = 200
@@ -215,9 +194,8 @@ resource "aws_cloudfront_distribution" "web" {
     }
   }
 
-  # Sin dominio propio se usa el certificado de la distribucion; con el, el nuestro.
-  # sni-only y no una direccion IP dedicada: esta ultima cuesta cientos de dolares
-  # al mes y solo hace falta para clientes muy antiguos que aqui no existen.
+  # sni-only rather than a dedicated IP: that costs hundreds of dollars a month and
+  # is only needed for very old clients.
   viewer_certificate {
     cloudfront_default_certificate = var.web_domain == ""
     acm_certificate_arn            = var.web_domain == "" ? null : aws_acm_certificate_validation.web[0].certificate_arn
@@ -226,7 +204,7 @@ resource "aws_cloudfront_distribution" "web" {
   }
 }
 
-# Solo la distribucion puede leer el bucket del frontend.
+
 data "aws_iam_policy_document" "web" {
   statement {
     sid       = "PermitirLecturaDesdeLaDistribucion"

@@ -2,14 +2,9 @@ import { createApp } from "./app.js";
 import { loadConfig, type AppConfig } from "./config/env.js";
 import { createAccessTokenVerifier } from "./auth/verifier.js";
 
-/**
- * Arranque local.
- *
- * Dos cosas ocurren antes de aceptar ninguna peticion: se valida la configuracion
- * y se descargan las claves publicas del directorio de usuarios. Si cualquiera de
- * las dos falla, el proceso no llega a escuchar. La alternativa seria aceptar
- * peticiones que estamos condenados a rechazar.
- */
+// Config is validated and the public keys are fetched BEFORE listening. If either
+// fails the process never listens, rather than accepting requests we are bound to
+// reject.
 async function main(): Promise<void> {
   let config: AppConfig;
 

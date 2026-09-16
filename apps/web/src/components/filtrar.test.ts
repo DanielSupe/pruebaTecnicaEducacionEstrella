@@ -15,9 +15,9 @@ describe("normalizar", () => {
   });
 
   it("también iguala la eñe a la ene, porque esto es un buscador", () => {
-    // Para IDENTIDAD, eñe y ene son letras distintas. Para BUSCAR, no: quien
-    // escribe "narino" en un teclado sin eñe debe encontrar "NARIÑO". El valor
-    // que se guarda es siempre el original, con su eñe intacta.
+    // For IDENTITY they are different letters. For SEARCH they are not: typing
+    // "narino" on a keyboard without ñ must find "NARIÑO". The stored value is
+    // always the original.
     expect(normalizar("NARIÑO")).toBe("narino");
   });
 });
@@ -36,8 +36,7 @@ describe("coincidencias: cómo se busca", () => {
   });
 
   it("encuentra escribiendo SIN tildes", () => {
-    // En un teclado móvil poner la tilde es trabajo extra. Exigirla convertiría
-    // la ayuda en un obstáculo.
+    // Typing the accent on a mobile keyboard is extra work.
     const { visibles } = coincidencias(MUESTRA, "aeronautica");
 
     expect(visibles).toEqual([]);
@@ -47,14 +46,13 @@ describe("coincidencias: cómo se busca", () => {
   });
 
   it("busca en cualquier parte del nombre, no solo al principio", () => {
-    // Quien busca "SENA" no empieza por "SERVICIO NACIONAL".
+    // Someone searching "SENA" does not start with "SERVICIO NACIONAL".
     expect(coincidencias(MUESTRA, "sena").visibles).toEqual([
       "SERVICIO NACIONAL DE APRENDIZAJE-SENA-",
     ]);
   });
 
   it("sin texto ofrece el principio del listado", () => {
-    // Para quien no sabe cómo se escribe exactamente lo que busca.
     const { visibles, total } = coincidencias(MUESTRA, "");
 
     expect(visibles).toEqual(MUESTRA);
@@ -68,7 +66,7 @@ describe("coincidencias: cómo se busca", () => {
 
 describe("coincidencias: cuando no hay nada", () => {
   it("devuelve VACÍO, no el listado entero", () => {
-    // Devolver todo le diría al usuario que su búsqueda encontró algo.
+    // Returning everything would tell the user their search found something.
     const { visibles, total } = coincidencias(MUESTRA, "universitat de barcelona");
 
     expect(visibles).toEqual([]);
@@ -78,8 +76,8 @@ describe("coincidencias: cuando no hay nada", () => {
 
 describe("coincidencias: cuántas se pintan", () => {
   it("no devuelve más de las que se pintan, pero sí dice cuántas hay", () => {
-    // 300 nodos en el DOM por cada pulsación es gasto para nada; el total sirve
-    // para decirle al usuario que siga escribiendo.
+    // 300 DOM nodes per keystroke is waste; the total tells the user to keep
+    // typing.
     const { visibles, total } = coincidencias(instituciones, "");
 
     expect(visibles).toHaveLength(MAX_OPCIONES);
@@ -90,8 +88,8 @@ describe("coincidencias: cuántas se pintan", () => {
 
 describe("el listado versionado", () => {
   it("no tiene duplicados", () => {
-    // El registro trae una fila por sede: sin deduplicar, la Nacional aparecería
-    // nueve veces seguidas.
+    // The registry has one row per campus: without deduplication the Nacional
+    // would appear nine times in a row.
     expect(new Set(instituciones).size).toBe(instituciones.length);
   });
 
@@ -102,8 +100,7 @@ describe("el listado versionado", () => {
   });
 
   it("conserva las tildes", () => {
-    // Si la descarga o el guardado rompieran la codificación, esto lo detecta
-    // antes de que un nombre mal escrito acabe en la base de datos.
+    // Detects a broken encoding before a mangled name reaches the database.
     expect(instituciones.some((n) => /[ÁÉÍÓÚÑ]/.test(n))).toBe(true);
   });
 

@@ -18,13 +18,13 @@ export function createApplicationsRouter(
   router.post("/applications", authenticate, (req, res, next) => {
     void (async () => {
       try {
-        // El identificador sale del token verificado. Nunca del cuerpo: aceptarlo
-        // de ahi permitiria registrar solicitudes en nombre de cualquiera.
+        // From the verified token, never from the body: accepting it there would
+        // let anyone file applications in someone else's name.
         const userId = req.user?.userId;
         if (!userId) throw new UnauthorizedError();
 
-        // Se valida en el servidor AUNQUE el navegador ya lo haya hecho: el
-        // cliente no es una frontera de confianza.
+        // Validated server-side EVEN THOUGH the browser already did: the client
+        // is not a trust boundary.
         const validado = createApplicationInputSchema.safeParse(req.body);
 
         if (!validado.success) {
@@ -58,13 +58,6 @@ export function createApplicationsRouter(
     })();
   });
 
-  /**
-   * Solicitudes del solicitante autenticado.
-   *
-   * No tener ninguna es un estado normal de quien acaba de registrarse, asi que
-   * se responde con una lista vacia y exito: tratarlo como error obligaria al
-   * navegador a distinguir "vacio" de "fallo".
-   */
   router.get("/applications", authenticate, (req, res, next) => {
     void (async () => {
       try {
@@ -78,8 +71,6 @@ export function createApplicationsRouter(
           throw new BadRequestError(primero?.message ?? "Parámetros de consulta inválidos.");
         }
 
-        // La identidad sale del token. Si la peticion trae un userId, se ignora:
-        // ni siquiera llega hasta aqui.
         const { items, nextCursor } = await repositorio.listApplications(userId, parametros.data);
 
         res.json({ items: items.map(sinClaveInterna), nextCursor });
@@ -89,19 +80,13 @@ export function createApplicationsRouter(
     })();
   });
 
-  /**
-   * Aviso de que la subida termino.
-   *
-   * Existe porque la API no se entera: el video va del navegador al
-   * almacenamiento sin pasarle por delante.
-   *
-   * El ORDEN de las tres operaciones no es indiferente. Verificar, reetiquetar y
-   * despues actualizar. Si se actualizara antes de reetiquetar y fallara entre
-   * medias, quedaria una solicitud enviada con su video aun marcado como
-   * pendiente, y la limpieza automatica lo borraria a los siete dias. En este
-   * orden, un fallo intermedio deja la solicitud pendiente con el video a salvo
-   * y se repara al reintentar.
-   */
+  // Exists because the API never sees the upload: the video goes straight to
+  // storage.
+  //
+  // The ORDER of the three operations matters: verify, retag, then update. Updating
+  // before retagging would leave a submitted application whose video is still
+  // marked pending, and the cleanup rule would delete it days later. In this order,
+  // a failure in between leaves the application pending with the video safe.
   router.post("/applications/:id/complete-upload", authenticate, (req, res, next) => {
     void (async () => {
       try {
@@ -110,9 +95,8 @@ export function createApplicationsRouter(
 
         const solicitud = await buscarPropia(userId, req.params.id);
 
-        // Avisar dos veces produce el mismo resultado que avisar una: pasa con
-        // una red poco fiable, y sobre todo cuando alguien cierra la pestana
-        // tras subir y vuelve mas tarde.
+        // Notifying twice yields the same result as notifying once: it happens on
+        // a flaky network, and when someone closes the tab after uploading.
         if (solicitud.status === "UNDER_REVIEW") {
           res.json(sinClaveInterna(solicitud));
           return;
@@ -141,8 +125,7 @@ export function createApplicationsRouter(
           video.sizeBytes,
         );
 
-        // null significa que la condicion no se cumplio, es decir que otra
-        // peticion la envio mientras tanto. Tampoco es un error.
+        // null means another request submitted it meanwhile. Not an error either.
         res.json(sinClaveInterna(actualizada ?? { ...solicitud, status: "UNDER_REVIEW" }));
       } catch (error) {
         next(error);
@@ -150,14 +133,6 @@ export function createApplicationsRouter(
     })();
   });
 
-  /**
-   * Enlace temporal para VER el video.
-   *
-   * Mismo camino que la re-firma de subida y distinto metodo: es el mismo
-   * recurso —la direccion del video de esta solicitud— y el metodo separa
-   * escribirlo de leerlo. Inventar un segundo camino parecido solo invitaria a
-   * confundirlos.
-   */
   router.get("/applications/:id/video-url", authenticate, (req, res, next) => {
     void (async () => {
       try {
@@ -166,9 +141,8 @@ export function createApplicationsRouter(
 
         const solicitud = await buscarPropia(userId, req.params.id);
 
-        // Una solicitud pendiente puede no tener objeto, o tener uno que nunca
-        // se verifico. Firmar hacia algo que quiza no existe le devolveria al
-        // usuario un error opaco del almacenamiento en vez de una explicacion.
+        // A pending application may have no object at all. Signing towards
+        // something that may not exist would return an opaque storage error.
         if (solicitud.status !== "UNDER_REVIEW") {
           throw new ConflictError(
             "Esta solicitud todavía no tiene un video confirmado que puedas ver.",
@@ -177,8 +151,8 @@ export function createApplicationsRouter(
 
         const enlace = await almacenamiento.authorizeView(solicitud.videoKey);
 
-        // Se devuelve el enlace, NO la ubicacion del objeto: la lleva dentro
-        // firmada, que es distinto de publicarla como dato.
+        // The link carries the location signed inside, which is not the same as
+        // publishing it as data.
         res.json(enlace);
       } catch (error) {
         next(error);
@@ -186,12 +160,8 @@ export function createApplicationsRouter(
     })();
   });
 
-  /**
-   * Nueva autorizacion de subida para reintentar.
-   *
-   * La ruta del objeto es la MISMA, asi que reintentar sobreescribe en lugar de
-   * ir dejando huerfanos por cada intento fallido.
-   */
+  // The object path is the SAME, so retrying overwrites instead of leaving an
+  // orphan per failed attempt.
   router.post("/applications/:id/video-url", authenticate, (req, res, next) => {
     void (async () => {
       try {
@@ -216,17 +186,10 @@ export function createApplicationsRouter(
     })();
   });
 
-  /**
-   * Busca una solicitud del solicitante autenticado.
-   *
-   * Una solicitud ajena se comporta como inexistente: distinguir "no existe" de
-   * "no es tuya" permitiria averiguar que identificadores estan en uso. La
-   * identidad forma parte de la clave, asi que ni siquiera hay que acordarse de
-   * comprobar el propietario.
-   */
+  // Someone else's application behaves as non-existent: telling "does not exist"
+  // apart from "not yours" would reveal which ids are in use.
   async function buscarPropia(userId: string, parametro: string | string[] | undefined) {
-    // Express permite parametros repetidos, que llegarian como array. Un
-    // identificador no lo es: cualquier otra forma se trata como inexistente.
+    // Express allows repeated params, which arrive as an array. An id is not one.
     const applicationId = typeof parametro === "string" ? parametro : undefined;
     if (!applicationId) throw new NotFoundError("La solicitud no existe.");
 
@@ -239,7 +202,7 @@ export function createApplicationsRouter(
   return router;
 }
 
-/** La ruta del objeto es detalle interno: no se expone al cliente. */
+// The object path is internal detail and is never exposed to the client.
 function sinClaveInterna<T extends { videoKey?: string }>(solicitud: T) {
   const { videoKey: _interna, ...publica } = solicitud;
   return publica;

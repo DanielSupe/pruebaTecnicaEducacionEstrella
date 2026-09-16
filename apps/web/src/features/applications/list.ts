@@ -6,30 +6,25 @@ export const applicationsQueryKey = ["applications"] as const;
 
 async function fetchPagina(cursor?: string): Promise<PaginatedApplications> {
   const { data } = await http.get<PaginatedApplications>("/applications", {
-    // Sin puntero se pide la primera pagina. El limite lo decide el servidor.
+    // With no cursor this asks for the first page. The server decides the limit.
     params: cursor ? { cursor } : undefined,
   });
   return data;
 }
 
-/**
- * Consulta paginada de las solicitudes propias.
- *
- * El puntero se devuelve TAL CUAL lo entrego la API. Es opaco a proposito: el
- * servidor reconstruye la particion a consultar desde el token, no desde lo que
- * venga en el puntero, asi que aqui no hay nada que interpretar ni que
- * completar. Tocarlo solo podria estropearlo.
- */
+// The cursor is returned EXACTLY as the API handed it over. It is opaque on
+// purpose: the server rebuilds the partition from the token, so there is nothing
+// here to interpret. Touching it could only break it.
 export const applicationsQuery = infiniteQueryOptions({
   queryKey: applicationsQueryKey,
   queryFn: ({ pageParam }) => fetchPagina(pageParam),
   initialPageParam: undefined as string | undefined,
-  // Sin puntero en la respuesta significa que no quedan mas. Devolver undefined
-  // es lo que apaga el boton de traer mas.
+  // No cursor in the response means there are no more pages: returning undefined
+  // is what turns off the load-more button.
   getNextPageParam: (ultima: PaginatedApplications) => ultima.nextCursor,
 });
 
-/** Aplana las paginas en una sola lista, conservando el orden en que llegaron. */
+/** Flattens the pages into one list, keeping the order they arrived in. */
 export function solicitudesDe(paginas: PaginatedApplications[] | undefined): Application[] {
   return paginas?.flatMap((pagina) => pagina.items) ?? [];
 }

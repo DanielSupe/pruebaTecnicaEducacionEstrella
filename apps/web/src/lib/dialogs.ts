@@ -26,6 +26,25 @@ const estilos = {
   cancelButton: `${BOTON_BASE} border border-slate-300 bg-white text-slate-700 hover:bg-slate-50`,
 };
 
+/**
+ * Donde se dibuja el aviso.
+ *
+ * NO es un problema de z-index, aunque lo parezca. Una ventana abierta con
+ * showModal() vive en el "top layer" del navegador: una capa por encima de todo
+ * el documento a la que z-index NO llega. Se comprobo: un elemento con
+ * z-index 2147483647 —el maximo posible— sigue quedando detras.
+ *
+ * Lo unico que situa el aviso en esa misma capa es renderizarlo DENTRO de la
+ * ventana. Por eso se busca una abierta y se usa como contenedor.
+ *
+ * Se resuelve solo, sin parametro, a proposito: si cada pantalla tuviera que
+ * acordarse de indicarlo, olvidarlo reproduciria este mismo fallo, y no da
+ * ningun sintoma hasta que alguien abre esa ventana concreta.
+ */
+function destino(): HTMLElement | undefined {
+  return document.querySelector<HTMLDialogElement>("dialog[open]") ?? undefined;
+}
+
 /** Base comun: sin estilos propios de la libreria y sin iconos animados. */
 const base = {
   buttonsStyling: false,
@@ -56,6 +75,7 @@ export async function confirmar({
 }: OpcionesConfirmacion): Promise<boolean> {
   const resultado = await Swal.fire({
     ...base,
+    target: destino(),
     title: titulo,
     text: mensaje,
     showCancelButton: true,
@@ -86,6 +106,7 @@ export async function avisarError({
 }: OpcionesAviso): Promise<void> {
   await Swal.fire({
     ...base,
+    target: destino(),
     title: titulo,
     text: mensaje,
     confirmButtonText: "Entendido",
@@ -97,6 +118,7 @@ export async function avisarError({
 export async function avisarExito({ titulo, mensaje }: OpcionesAviso): Promise<void> {
   await Swal.fire({
     ...base,
+    target: destino(),
     title: titulo,
     text: mensaje,
     confirmButtonText: "Continuar",

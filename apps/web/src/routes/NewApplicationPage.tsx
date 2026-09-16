@@ -4,6 +4,8 @@ import type { UploadAuthorization, VideoContentType } from "@educacion-estrella/
 import { useValidatedForm } from "../lib/useValidatedForm.js";
 import { confirmar, avisarExito } from "../lib/dialogs.js";
 import { Field } from "../components/Field.js";
+import { Combobox } from "../components/Combobox.js";
+import instituciones from "../features/applications/institutions.json";
 import { FileField } from "../components/FileField.js";
 import { Button } from "../components/Button.js";
 import { ProgressBar } from "../components/ProgressBar.js";
@@ -171,13 +173,17 @@ export function NewApplicationPage() {
           disabled={subiendo}
         />
 
-        <Field
+        {/* Sugiere, no obliga: el listado solo cubre instituciones colombianas
+            de educacion superior, asi que se admite escribir otra. */}
+        <Combobox
           id="institution"
           label="Institución educativa"
+          opciones={instituciones}
           value={institution}
-          onChange={(e) => setInstitution(e.target.value)}
+          onChange={setInstitution}
           error={errores.institution}
           disabled={subiendo}
+          ayuda="Escribe para buscar. Si no aparece, puedes escribirla completa."
         />
 
         <Field

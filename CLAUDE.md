@@ -81,6 +81,12 @@ lo que sabemos que va a crecer".
 - Errores: clases propias y un middleware central. Nada de `try/catch` que se traga el error ni
   de `console.log` como manejo de errores.
 - Estructura: `apps/web`, `apps/api`, `packages/shared`, `infra/`.
+- El backend va **por módulo y, dentro, por capas en archivos separados**:
+  `<modulo>.routes.ts` (qué URL existe), `<modulo>.controller.ts` (HTTP: identidad, validación,
+  códigos, forma de la respuesta), `<modulo>.service.ts` (las reglas, sin saber que existe HTTP) y
+  el acceso a datos (`<modulo>.repository.ts`, `<modulo>.storage.ts`). Un módulo que no persiste
+  nada no lleva repositorio. Cada capa **recibe** la de abajo; ninguna la busca por su cuenta, y el
+  montaje ocurre entero en `app.ts`.
 
 ## Flujo de trabajo
 

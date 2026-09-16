@@ -13,84 +13,93 @@ y es la fuente de verdad de los requisitos.
 
 ## 1. Cómo levantar el proyecto localmente
 
-El sistema **requiere infraestructura AWS para ejecutarse completamente**. La autenticación depende
-de Cognito, y los datos y los videos se almacenan en DynamoDB y S3. No implementé una capa de
-emulación local de estos servicios, así que recorrer el flujo completo exige un entorno de AWS
-configurado.
+**No hay emulación local de AWS.** La autenticación es Cognito y los datos y los videos viven en
+DynamoDB y S3; no implementé una capa que los sustituya, así que el flujo completo se recorre
+contra infraestructura real.
 
-Las pruebas automatizadas sí corren **sin AWS**: usan dobles, y pasan con las credenciales
+Eso no significa que haya que desplegar nada: **la infraestructura ya está corriendo**, y el primer
+camino de aquí abajo la usa tal cual.
+
+Las pruebas automatizadas sí corren **sin AWS**: usan dobles y pasan con las credenciales
 eliminadas. Lo que no existe es su otra mitad — la verificación contra infraestructura real se hizo
 a mano. Para una evolución del proyecto añadiría esas pruebas de integración contra un entorno de
-desarrollo, separadas de las unitarias.
+desarrollo.
 
-Hay dos caminos. Elige según lo que ya tengas.
+Tres caminos, de menos a más esfuerzo. Elige el primero que te sirva.
 
-### A) La infraestructura ya existe
+---
 
-Es el caso si alguien te pasa los identificadores, o si ya ejecutaste el camino B alguna vez.
-**No necesitas Terraform.**
+### A) Solo el frontend, contra la API desplegada
 
-Necesitas **Node 22+**, **pnpm 11** y **credenciales de AWS** que el SDK pueda resolver —de
-variables de entorno o de un perfil, igual que las usa el CLI de `aws`—. Sin ellas la API arranca,
-pero falla en cuanto toca DynamoDB o S3.
+**El más corto.** Ni Terraform, ni levantar la API, ni credenciales de AWS. Basta para recorrer el
+flujo entero, incluida la subida del video.
+
+Necesitas **Node 22+** y **pnpm 11**.
 
 ```bash
 pnpm install
-
-cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
-# rellena los dos con los valores de tu infraestructura
 ```
 
-Cinco valores, los mismos en los dos archivos con distinto nombre:
-
-| Qué                         | En `apps/api/.env`        | En `apps/web/.env`          |
-| --------------------------- | ------------------------- | --------------------------- |
-| Región                      | `AWS_REGION`              | —                           |
-| ID del User Pool de Cognito | `COGNITO_USER_POOL_ID`    | `VITE_COGNITO_USER_POOL_ID` |
-| ID del App Client           | `COGNITO_CLIENT_ID`       | `VITE_COGNITO_CLIENT_ID`    |
-| Tabla de DynamoDB           | `APPLICATIONS_TABLE_NAME` | —                           |
-| Bucket de videos            | `VIDEOS_BUCKET_NAME`      | —                           |
-
-El frontend necesita además `VITE_API_BASE_URL=http://localhost:3000/api/v1`, y la API
-`CORS_ALLOWED_ORIGINS=http://localhost:5173`. Ambos vienen ya puestos en las plantillas.
-
-Y arrancar, en dos terminales:
+En `apps/web/.env`, tres valores:
 
 ```bash
-pnpm --filter @educacion-estrella/api dev    # API en http://localhost:3000
-pnpm --filter @educacion-estrella/web dev    # web en http://localhost:5173
+VITE_API_BASE_URL=https://<dominio-desplegado>/api/v1
+VITE_COGNITO_USER_POOL_ID=us-east-1_XXXXXXXXX
+VITE_COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Los dos identificadores de Cognito salen de `terraform output` en el despliegue que vayas a usar, o
+de quien te haya pasado el proyecto. No son secretos: viajan en el paquete que descarga cualquiera
+que abra la aplicación.
+
+```bash
+pnpm --filter @educacion-estrella/web dev    # http://localhost:5173
+```
+
+Funciona porque el despliegue autoriza `http://localhost:5173` como origen, tanto en la API como en
+el bucket de videos — por eso la subida directa al almacenamiento también funciona desde local.
+
+---
+
+### B) Frontend y API, los dos en local
+
+Para depurar el backend. Necesitas lo anterior más **credenciales de AWS**: la API llama a DynamoDB
+y a S3 con IAM, y esas llamadas van firmadas. Sin credenciales arranca, pero falla en cuanto toca
+datos.
+
+Pueden ir en tu perfil de AWS, en el entorno, o **en el propio `apps/api/.env`** junto al resto de
+variables.
+
+```bash
+cp apps/api/.env.example apps/api/.env
+```
+
+Los cinco identificadores de infraestructura que pide salen de `terraform output`. Y en
+`apps/web/.env`, apunta el frontend a tu API local:
+
+```bash
+VITE_API_BASE_URL=http://localhost:3000/api/v1
+```
+
+En dos terminales:
+
+```bash
+pnpm --filter @educacion-estrella/api dev    # http://localhost:3000
+pnpm --filter @educacion-estrella/web dev    # http://localhost:5173
 ```
 
 La API valida su configuración **al arrancar** y el frontend la valida **al construir**: si falta
-una variable, ninguno de los dos llega a levantar, y el mensaje dice cuál falta.
+una variable, ninguno de los dos llega a levantar y el mensaje dice cuál falta.
 
-Si copiaste las plantillas pero no las rellenaste, la API falla con `node: .env: not found` o con la
-lista de variables que faltan. No es un fallo del proyecto.
+Un aviso: la comprobación de vida responde correctamente aunque las credenciales estén mal, porque
+no consulta nada. Para saber si la API llega a los datos, pide el listado de solicitudes.
 
-#### Lo que el User Pool tiene que tener activado
+---
 
-Si el User Pool lo creaste a mano en vez de con Terraform, hay tres cosas **sin las cuales el
-acceso no funciona**, y ninguna da un error que apunte a su causa:
+### C) Crear la infraestructura desde cero
 
-- **El correo como `username`, no como alias.** Es el detalle crítico. Configurado como alias,
-  Cognito solo resuelve el correo cuando está verificado; como aquí no se verifica, los usuarios se
-  registrarían bien y **nunca podrían iniciar sesión**.
-- **App Client sin secreto.** El cliente es un navegador: un secreto incrustado ahí lo lee
-  cualquiera en el paquete descargado. Y con secreto, la librería de autenticación rechaza la
-  configuración.
-- **Flujo de autenticación SRP habilitado** (`ALLOW_USER_SRP_AUTH`) más el de refresco. Es el que
-  usa el frontend: la contraseña nunca viaja.
-
-Además, el registro se auto-confirma con un trigger `PreSignUp`. Sin él los usuarios quedan sin
-confirmar y no pueden entrar, así que tendrías que confirmarlos a mano.
-
-La contraseña exige 8 caracteres con mayúscula, minúscula y número. **Sin símbolo obligatorio**: el
-valor por omisión de Cognito lo exige y es fricción innecesaria para quien pruebe la demostración.
-
-### B) Crear la infraestructura desde cero
-
-Necesitas lo anterior más **Terraform 1.9+**.
+Necesitas además **Terraform 1.9+** y el **AWS CLI**.
 
 ```bash
 pnpm install
@@ -108,7 +117,28 @@ bucket, identificadores de Cognito y nombres de tabla; ese script los lee de `te
 escribe los `.env`. Copiarlos a mano cuesta más tiempo del que ahorra, y un carácter mal puesto
 produce un fallo que no apunta a su causa.
 
-Después, a arrancar igual que en el camino A.
+Después, a arrancar igual que en el camino B.
+
+#### Lo que el User Pool tiene que tener activado
+
+Si lo creas a mano en vez de con Terraform, hay tres cosas **sin las cuales el acceso no funciona**,
+y ninguna da un error que apunte a su causa:
+
+- **El correo como `username`, no como alias.** Es el detalle crítico. Configurado como alias,
+  Cognito solo resuelve el correo cuando está verificado; como aquí no se verifica, los usuarios se
+  registrarían bien y **nunca podrían iniciar sesión**.
+- **App Client sin secreto.** El cliente es un navegador: un secreto incrustado ahí lo lee
+  cualquiera en el paquete descargado. Y con secreto, la librería de autenticación rechaza la
+  configuración.
+- **Flujo de autenticación SRP habilitado** (`ALLOW_USER_SRP_AUTH`) más el de refresco.
+
+Además, el registro se auto-confirma con un trigger `PreSignUp`. Sin él los usuarios quedan sin
+confirmar y no pueden entrar.
+
+La contraseña exige 8 caracteres con mayúscula, minúscula y número. **Sin símbolo obligatorio**: el
+valor por omisión de Cognito lo exige y es fricción innecesaria para quien pruebe la demostración.
+
+---
 
 ### Comprobaciones
 
@@ -141,6 +171,26 @@ es lo que quedó construido.
 `packages/shared` es donde vive el contrato. Los límites del video, los estados de una solicitud y
 las reglas de cada campo existen **una sola vez**, como esquemas Zod que importan cliente y
 servidor. Es la única forma de que no diverjan.
+
+El backend se organiza **por módulo de negocio y, dentro de cada uno, por capas en archivos
+separados**. No hay una carpeta `controllers/` con todos los controladores juntos: lo que cambia a la
+vez vive junto, y lo que se toca al modificar las solicitudes está en una sola carpeta.
+
+```
+apps/api/src/features/applications/
+├── applications.routes.ts       Qué URL existe y qué la atiende. Nada más
+├── applications.controller.ts   HTTP: identidad, validación, códigos de estado, forma de la respuesta
+├── applications.service.ts      Las reglas de negocio. No sabe que existe HTTP
+├── applications.repository.ts   DynamoDB
+└── applications.storage.ts      S3
+```
+
+Cada capa **recibe** la de abajo; ninguna la busca por su cuenta. `app.ts` construye el repositorio y
+el almacenamiento, con ellos el servicio, con él el controlador, y se lo entrega a las rutas. Por eso
+las pruebas pueden sustituir DynamoDB y S3 sin interceptar módulos.
+
+`health` y `me` tienen tres capas en lugar de cinco: no persisten nada, así que no hay repositorio
+que escribir.
 
 ### Frontend
 
@@ -408,7 +458,6 @@ En este orden.
 con cobertura irregular. Hoy una subida que se corta al 90 % se pierde entera; con carga multiparte
 continuaría desde el último fragmento. Es lo único de esta lista que decide si la solicitud **llega
 o no llega**.
-
 
 **Enterarme de que algo falla sin que lo cuente un usuario.** Hay trazas, pero no métricas ni
 alarmas: si las subidas empezaran a fallar, nadie se enteraría hasta que alguien reclamara.

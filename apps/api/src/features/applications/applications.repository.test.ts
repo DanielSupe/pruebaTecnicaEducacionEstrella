@@ -11,7 +11,7 @@ vi.mock("@aws-sdk/lib-dynamodb", async () => {
   };
 });
 
-const { createApplicationsRepository } = await import("./repository.js");
+const { createApplicationsRepository } = await import("./applications.repository.js");
 
 const CONFIG = { awsRegion: "us-east-1", applicationsTableName: "tabla-de-prueba" };
 const USUARIO = "947844e8-5031-701a-bdf1-6d13401f76e9";

@@ -20,7 +20,9 @@ const orden: string[] = [];
 
 // Only what talks to AWS is doubled. The repository and storage are injected, so
 // no module interception is needed.
-import { createApplicationsRouter } from "./routes.js";
+import { createApplicationsRouter } from "./applications.routes.js";
+import { createApplicationsController } from "./applications.controller.js";
+import { createApplicationsService } from "./applications.service.js";
 
 const repositorio = {
   createApplication: crearSolicitud,
@@ -73,7 +75,10 @@ function app(userId: string | null = SUB) {
   aplicacion.use(express.json());
   aplicacion.use(
     "/api/v1",
-    createApplicationsRouter(autenticaComo(userId), repositorio, almacenamiento),
+    createApplicationsRouter(
+      autenticaComo(userId),
+      createApplicationsController(createApplicationsService(repositorio, almacenamiento)),
+    ),
   );
   aplicacion.use(notFoundHandler);
   aplicacion.use(errorHandler);

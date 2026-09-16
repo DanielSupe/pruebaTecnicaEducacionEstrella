@@ -2,8 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const obtenerToken = vi.fn<() => Promise<string | null>>();
 
-// Se simula el modulo de sesion: estas pruebas son del interceptor, no de la
-// libreria de autenticacion.
+// These tests are about the interceptor, not the auth library.
 vi.mock("./session.js", () => ({ getAccessToken: () => obtenerToken() }));
 
 vi.mock("../config/config.js", () => ({
@@ -12,7 +11,7 @@ vi.mock("../config/config.js", () => ({
 
 const { http } = await import("./http.js");
 
-/** Ejecuta la cadena de interceptores de peticion sin llegar a la red. */
+/** Runs the request interceptor chain without reaching the network. */
 async function cabecerasDeLaPeticion(): Promise<Record<string, unknown>> {
   const manejador = http.interceptors.request as unknown as {
     handlers: { fulfilled: (c: unknown) => Promise<{ headers: Record<string, unknown> }> }[];
@@ -37,8 +36,8 @@ describe("interceptor de peticiones", () => {
   });
 
   it("omite la cabecera cuando no hay sesion, en lugar de fallar", async () => {
-    // Las pantallas publicas tambien usan este cliente: si esto lanzara, la
-    // pantalla de acceso no podria hablar con la API.
+    // The public screens use this client too: if this threw, the login screen
+    // could not talk to the API.
     obtenerToken.mockResolvedValue(null);
 
     const cabeceras = await cabecerasDeLaPeticion();
@@ -47,8 +46,8 @@ describe("interceptor de peticiones", () => {
   });
 
   it("pide el token en CADA peticion, sin guardarse una copia", async () => {
-    // Cachearlo por nuestra cuenta significa enviar tokens caducados justo
-    // cuando alguien lleva rato trabajando.
+    // Caching it ourselves means sending expired tokens to whoever has been
+    // working for a while.
     obtenerToken.mockResolvedValue("primero");
     await cabecerasDeLaPeticion();
 

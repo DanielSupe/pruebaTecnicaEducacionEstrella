@@ -1,13 +1,5 @@
-/**
- * Errores previstos de la aplicacion.
- *
- * Lo que distingue a un AppError de cualquier otra excepcion es que sabemos que
- * puede pasar y sabemos que decirle al usuario. Todo lo demas es un fallo
- * inesperado, y de esos el cliente no ve el detalle nunca.
- *
- * Solo estan las subclases que este change usa. Las demas llegan con el endpoint
- * que las lance, para no decidir hoy contratos de error que aun pueden cambiar.
- */
+// An AppError is one we know can happen and know what to tell the user about.
+// Anything else is an unexpected failure, and the client never sees its detail.
 export class AppError extends Error {
   readonly statusCode: number;
   readonly code: string;
@@ -27,11 +19,8 @@ export class NotFoundError extends AppError {
 }
 
 export class UnauthorizedError extends AppError {
-  /**
-   * El mensaje es deliberadamente generico y no distingue entre token ausente,
-   * caducado, manipulado o emitido para otro cliente. Precisar el motivo solo
-   * ayuda a quien esta probando tokens: el usuario legitimo no necesita saberlo.
-   */
+  // Deliberately generic: it does not tell a missing token from an expired,
+  // tampered or foreign one. Being precise only helps whoever is probing tokens.
   constructor(message = "Credenciales ausentes o inválidas.") {
     super(message, 401, "UNAUTHORIZED");
   }
@@ -44,12 +33,8 @@ export class BadRequestError extends AppError {
 }
 
 export class ConflictError extends AppError {
-  /**
-   * La peticion choca con el estado actual del recurso: avisar de una subida
-   * que no ocurrio, o pedir una autorizacion nueva para algo ya enviado. No es
-   * un fallo del cliente al construir la peticion (eso seria 400) ni un fallo
-   * del servidor: es que el mundo no esta como la peticion supone.
-   */
+  // The request clashes with the current state of the resource: not a malformed
+  // request (that is 400), and not a server failure.
   constructor(message = "La operación no es posible en el estado actual.") {
     super(message, 409, "CONFLICT");
   }

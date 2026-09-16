@@ -14,7 +14,8 @@ import type {
 } from "@educacion-estrella/shared";
 import type { AppConfig } from "../../config/env.js";
 
-/** Dias que sobrevive una solicitud que nunca llega a confirmarse. */
+// Must stay aligned with the storage cleanup rule. If they diverged, applications
+// would point at videos that no longer exist.
 const DIAS_HASTA_EXPIRAR = 7;
 
 export type NewApplication = {
@@ -28,17 +29,6 @@ function segundosHastaExpirar(desde: Date): number {
   return Math.floor(desde.getTime() / 1000) + DIAS_HASTA_EXPIRAR * 24 * 60 * 60;
 }
 
-/**
- * Registra una solicitud pendiente de video.
- *
- * La clave compuesta resuelve la consulta "mis solicitudes" sin indices ni
- * recorridos: la particion es el solicitante y la ordenacion un identificador
- * ordenable por tiempo.
- *
- * El plazo de expiracion se alinea con la limpieza del almacenamiento. Si
- * divergieran, quedarian solicitudes apuntando a videos inexistentes.
- */
-/** Solicitud tal y como esta guardada, con lo que solo conoce el servidor. */
 export type StoredApplication = Application & {
   videoKey: string;
 };
@@ -64,13 +54,9 @@ export type ApplicationsRepository = {
   ) => Promise<{ items: StoredApplication[]; nextCursor?: string }>;
 };
 
-/**
- * El puntero de continuacion viaja en una URL, asi que se codifica.
- *
- * Solo lleva el identificador de la solicitud por la que seguir. La clave de
- * particion NO viaja en el: se reconstruye siempre con la identidad del token,
- * de modo que manipularlo no puede llevar a leer la particion de otro usuario.
- */
+// The cursor carries ONLY the sort key. The partition key does not travel in it:
+// it is always rebuilt from the token identity, so tampering cannot reach another
+// user's partition.
 function codificarCursor(sk: string): string {
   return Buffer.from(sk, "utf8").toString("base64url");
 }
@@ -80,26 +66,17 @@ function decodificarCursor(cursor: string | undefined): string | null {
 
   try {
     const sk = Buffer.from(cursor, "base64url").toString("utf8");
-    // Un puntero que no tenga la forma esperada se trata como ausencia, no como
-    // un fallo: un cursor corrupto en la URL no deberia producir un error 500.
+    // A malformed cursor is treated as absence, not as a failure: a corrupt value
+    // in a URL should not produce a server error.
     return sk.startsWith("APP#") ? sk : null;
   } catch {
     return null;
   }
 }
 
-/**
- * Fabrica el acceso a datos con la configuracion ya validada.
- *
- * Recibe la configuracion en lugar de leerla al cargarse el modulo, por dos
- * motivos: mantiene el patron que ya usa la aplicacion (server.ts valida y
- * inyecta) y permite importar este modulo sin exigir un entorno completo.
- *
- * El cliente se crea UNA vez por fabrica, no por peticion. En una funcion sin
- * servidor el modulo sobrevive entre invocaciones, asi que esto aprovecha el
- * arranque en caliente; crear un cliente por peticion anade decenas de
- * milisegundos a cada llamada sin aportar nada.
- */
+// Config is injected rather than read at module load: that keeps this module
+// importable without a full environment. The client is created ONCE per factory,
+// not per request, so warm starts reuse it.
 export function createApplicationsRepository(
   config: Pick<AppConfig, "awsRegion" | "applicationsTableName">,
 ): ApplicationsRepository {
@@ -140,9 +117,8 @@ export function createApplicationsRepository(
           updatedAt: createdAt,
           ttl: segundosHastaExpirar(ahora),
         },
-        // Un identificador ordenable no colisiona en la practica, pero escribir
-        // sin condicion permitiria sobreescribir en silencio si alguna vez lo
-        // hiciera.
+        // A time-ordered id does not collide in practice, but writing without a
+        // condition would allow a silent overwrite if it ever did.
         ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
       }),
     );
@@ -150,13 +126,8 @@ export function createApplicationsRepository(
     return { applicationId, userId, videoKey, createdAt };
   }
 
-  /**
-   * Lee una solicitud del solicitante indicado.
-   *
-   * La lectura va por clave, nunca recorriendo la tabla. Y la identidad forma
-   * parte de la clave, asi que una solicitud ajena simplemente no aparece: no
-   * hay que acordarse de comprobar el propietario despues.
-   */
+  // The identity is part of the key, so someone else's application simply does not
+  // appear. There is no ownership check to remember.
   async function getApplication(
     userId: string,
     applicationId: string,
@@ -171,16 +142,9 @@ export function createApplicationsRepository(
     return (Item as StoredApplication | undefined) ?? null;
   }
 
-  /**
-   * Da la solicitud por enviada.
-   *
-   * Devuelve null si la condicion no se cumple, es decir si ya no estaba
-   * pendiente. Quien llama decide que significa eso: aqui, que el aviso llego
-   * repetido, lo cual no es un error.
-   *
-   * Retirar el plazo de expiracion NO es opcional. Sin ese REMOVE, una solicitud
-   * enviada desaparece a los siete dias sin ruido, sin error y sin rastro.
-   */
+  // Removing the expiry is NOT optional. Without that REMOVE, a submitted
+  // application disappears days later with no noise, no error and no trace.
+  // Returns null when the condition fails, i.e. it was no longer pending.
   async function markAsSubmitted(
     userId: string,
     applicationId: string,
@@ -217,14 +181,9 @@ export function createApplicationsRepository(
     }
   }
 
-  /**
-   * Solicitudes de un usuario, de mas reciente a mas antigua.
-   *
-   * Consulta por clave de particion, nunca recorriendo la tabla. El orden sale
-   * gratis: el identificador de la clave de ordenacion es un ULID, que ordena
-   * lexicograficamente por tiempo, asi que basta con recorrerla al reves. Sin
-   * indice secundario y sin ordenar en memoria.
-   */
+  // Ordering is free: the sort key is a ULID, which orders lexicographically by
+  // time, so scanning it backwards is enough. No secondary index, no sorting in
+  // memory.
   async function listApplications(
     userId: string,
     opciones: { limit: number; cursor?: string },
@@ -236,12 +195,11 @@ export function createApplicationsRepository(
         TableName: config.applicationsTableName,
         KeyConditionExpression: "PK = :pk",
         ExpressionAttributeValues: { ":pk": `USER#${userId}` },
-        // Al reves: las mas recientes primero.
+        // Backwards: most recent first.
         ScanIndexForward: false,
         Limit: opciones.limit,
-        // La clave de particion se construye SIEMPRE con la identidad recibida,
-        // nunca con nada que venga del puntero. Es lo que impide que un cursor
-        // manipulado lleve a la particion de otro usuario.
+        // Built ALWAYS from the received identity, never from the cursor. This is
+        // what stops a forged cursor reaching another user's partition.
         ExclusiveStartKey: sk ? { PK: `USER#${userId}`, SK: sk } : undefined,
       }),
     );

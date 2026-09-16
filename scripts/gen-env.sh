@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 #
-# Genera los archivos de entorno de api y web a partir de las salidas de Terraform.
+# Generates the api and web env files from the Terraform outputs.
 #
-# Existe para cumplir una regla de CLAUDE.md: ningun identificador de
-# infraestructura se transcribe a mano al codigo. Terraform es la unica fuente de
-# verdad de estos valores.
+# No infrastructure identifier is ever transcribed by hand into the code: Terraform
+# is the single source of truth for these values.
 #
 # Uso: bash scripts/gen-env.sh
 
@@ -44,16 +43,14 @@ BUCKET_NAME="$(value videos_bucket_name)"
 USER_POOL_ID="$(value cognito_user_pool_id)"
 CLIENT_ID="$(value cognito_user_pool_client_id)"
 
-# Origenes del frontend en desarrollo. No sale de Terraform porque no es un
-# identificador de infraestructura, sino una decision de configuracion local; el
-# valor de produccion lo inyecta el despliegue.
+# Not from Terraform because it is not an infrastructure identifier but a local
+# configuration choice; the production value is injected by the deployment.
 WEB_DEV_ORIGIN="${WEB_DEV_ORIGIN:-http://localhost:5173}"
 
-# Direccion de la API para el frontend. En local apunta al servidor de desarrollo;
-# el change de despliegue la sustituye por la de API Gateway.
+# Locally this points at the dev server; the deployment replaces it.
 API_BASE_URL="${API_BASE_URL:-http://localhost:3000/api/v1}"
 
-# Las variables de la API no llevan prefijo: nunca salen del servidor.
+# The API variables carry no prefix: they never leave the server.
 cat > "$REPO_ROOT/apps/api/.env" <<EOF
 # Generado por scripts/gen-env.sh a partir de las salidas de Terraform.
 # No lo edites a mano: se regenera. No se versiona.
@@ -65,8 +62,8 @@ COGNITO_CLIENT_ID=$CLIENT_ID
 CORS_ALLOWED_ORIGINS=$WEB_DEV_ORIGIN
 EOF
 
-# Las del frontend llevan prefijo VITE_ porque Vite solo expone al navegador las
-# que lo tienen. Ninguno de estos valores es secreto: son identificadores publicos.
+# The frontend ones carry the VITE_ prefix because Vite only exposes those to the
+# browser. None of these values is secret.
 cat > "$REPO_ROOT/apps/web/.env" <<EOF
 # Generado por scripts/gen-env.sh a partir de las salidas de Terraform.
 # No lo edites a mano: se regenera. No se versiona.

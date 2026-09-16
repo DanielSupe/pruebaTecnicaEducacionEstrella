@@ -22,17 +22,33 @@ describe("loadConfig", () => {
   it.each(["VITE_API_BASE_URL", "VITE_COGNITO_USER_POOL_ID", "VITE_COGNITO_CLIENT_ID"])(
     "falla si falta %s, diciendo cual",
     (variable) => {
-      // En una aplicacion de pagina unica los valores se incrustan al construir:
-      // si esto no falla aqui, falla como pantalla rota para el usuario.
+      // Values are baked in at build time: if this does not fail here, it fails
+      // as a broken screen for the user.
       const { [variable]: _omitida, ...incompleta } = minimo as Record<string, string>;
       expect(() => loadConfig(incompleta)).toThrowError(new RegExp(variable));
     },
   );
 
-  it.each(["", "no-es-una-url", "localhost:3000", "  "])(
+  it.each(["", "no-es-una-url", "localhost:3000", "  ", "api/v1", "./api/v1"])(
     "rechaza la direccion invalida %s",
     (VITE_API_BASE_URL) => {
+      // "localhost:3000" is the non-obvious case: with no protocol the parser
+      // reads it as scheme "localhost:" with path "3000".
       expect(() => loadConfig({ ...minimo, VITE_API_BASE_URL })).toThrowError();
     },
   );
+
+  it("acepta una ruta desde la raiz, para cuando frontend y API comparten origen", () => {
+    // How it is served in the cloud, and it avoids needing the domain to build.
+    const config = loadConfig({ ...minimo, VITE_API_BASE_URL: "/api/v1" });
+
+    expect(config.apiBaseUrl).toBe("/api/v1");
+  });
+
+  it("a una ruta desde la raiz tambien le quita la barra final", () => {
+    // Otherwise requests would go out with a double slash.
+    const config = loadConfig({ ...minimo, VITE_API_BASE_URL: "/api/v1/" });
+
+    expect(config.apiBaseUrl).toBe("/api/v1");
+  });
 });

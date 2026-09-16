@@ -14,15 +14,11 @@ configureAuth();
 
 const router = crearRouter(queryClient);
 
-/**
- * Sesion caducada.
- *
- * Se avisa antes de redirigir: aparecer de golpe en la pantalla de acceso sin
- * explicacion hace pensar que la aplicacion fallo.
- *
- * El guardia contra bucles importa: si el rechazo ocurre estando ya en una
- * pantalla publica, redirigir de nuevo encadenaria avisos sin fin.
- */
+// Warn before redirecting: landing on the login screen with no explanation reads
+// as the application having failed.
+//
+// The loop guard matters: if the rejection happens while already on a public
+// screen, redirecting again would chain alerts forever.
 const RUTAS_PUBLICAS = ["/login", "/registro"];
 let avisando = false;
 

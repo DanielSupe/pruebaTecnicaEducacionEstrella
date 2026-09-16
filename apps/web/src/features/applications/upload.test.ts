@@ -3,19 +3,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const postApi = vi.fn();
 const postAlmacenamiento = vi.fn();
 
-/** Registro del orden real de las llamadas, para poder afirmar sobre la secuencia. */
+/** Records the real call order, so the sequence can be asserted on. */
 const orden: string[] = [];
 
-/**
- * Se simula http.js POR COMPLETO, sin ejecutar el modulo real.
- *
- * Tanto http.js como upload.ts llaman a axios.create(): si se dejara correr el
- * real, ambos recibirian el mismo doble y la prueba que separa los dos clientes
- * dejaria de probar nada. Asi cada uno queda claramente identificado.
- *
- * ApiError se define aqui porque upload.ts la importa de este mismo modulo, de
- * modo que el `instanceof` sigue siendo coherente.
- */
+// http.js is mocked COMPLETELY. Both it and upload.ts call axios.create(): letting
+// the real one run would give both the same double, and the test that separates the
+// two clients would stop proving anything.
 vi.mock("../../lib/http.js", () => {
   class ApiError extends Error {
     readonly code: string;
@@ -89,8 +82,8 @@ beforeEach(() => {
 
 describe("el flujo usa el cliente correcto en cada paso", () => {
   it("la transferencia NO pasa por el cliente de la API", async () => {
-    // Ese cliente adjunta el token de acceso: usarlo para el almacenamiento
-    // entregaria nuestras credenciales a un tercero que no las necesita.
+    // That client attaches the access token: using it for storage would hand our
+    // credentials to a third party that does not need them.
     await transferirVideo(AUTORIZACION, video(), {
       onProgreso: () => {},
       signal: new AbortController().signal,
@@ -111,7 +104,7 @@ describe("el flujo usa el cliente correcto en cada paso", () => {
 
 describe("el formulario multiparte", () => {
   it("incluye todos los campos de la autorización y el archivo AL FINAL", async () => {
-    // El almacenamiento ignora todo lo que venga despues del archivo.
+    // Storage ignores everything that comes after the file.
     await transferirVideo(AUTORIZACION, video(), {
       onProgreso: () => {},
       signal: new AbortController().signal,
@@ -188,7 +181,7 @@ describe("errores", () => {
 
 describe("reintento", () => {
   it("pide una autorización nueva sin registrar otra solicitud", async () => {
-    // Registrar otra dejaria una solicitud huerfana por cada intento fallido.
+    // Registering another would leave an orphan per failed attempt.
     postApi.mockResolvedValue({ data: { upload: AUTORIZACION } });
 
     await renovarAutorizacion("01HXYZ");
@@ -200,8 +193,8 @@ describe("reintento", () => {
 
 describe("cancelacion", () => {
   it("se distingue de un fallo, para no avisar de algo que el usuario acaba de hacer", async () => {
-    // Sin esta distincion, cancelar mostraba una ventana de error con el texto
-    // crudo "canceled". Cancelar es deliberado: no hay nada que reportar.
+    // Without this distinction, cancelling showed an error dialog reading the raw
+    // "canceled". Cancelling is deliberate: there is nothing to report.
     const axios = (await import("axios")).default;
     const cancelacion = new axios.CanceledError("canceled");
 
@@ -218,7 +211,7 @@ describe("cancelacion", () => {
       signal: new AbortController().signal,
     }).catch((e: unknown) => e);
 
-    // Si se envolviera en UploadError, quien llama no podria distinguirla.
+    // Wrapped in UploadError, the caller could not tell it apart.
     expect(esCancelacion(error)).toBe(true);
   });
 });

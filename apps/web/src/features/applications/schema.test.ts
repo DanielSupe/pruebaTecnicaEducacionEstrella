@@ -3,14 +3,14 @@ import { MAX_VIDEO_BYTES } from "@educacion-estrella/shared";
 import { applicationFormSchema, montoATexto, tamanoLegible } from "./schema.js";
 
 function archivo(tipo: string, bytes: number): File {
-  // El contenido no importa: el esquema solo mira tipo y tamaño.
+  // Content does not matter: the schema only looks at type and size.
   return new File([new Uint8Array(Math.min(bytes, 1024))], "entrevista.mp4", {
     type: tipo,
     lastModified: Date.now(),
   });
 }
 
-/** File no permite fijar el tamaño, asi que se sustituye para los casos limite. */
+/** File does not allow setting a size, so it is stubbed for the edge cases. */
 function archivoDe(tipo: string, bytes: number): File {
   const f = archivo(tipo, 1);
   Object.defineProperty(f, "size", { value: bytes });
@@ -56,12 +56,12 @@ describe("applicationFormSchema: el video", () => {
     });
 
     expect(resultado.success).toBe(false);
-    // El mensaje sale del esquema compartido, no de uno escrito aqui.
+    // The message comes from the shared schema, not one written here.
     expect(resultado.error?.issues[0]?.message).toMatch(/\.mp4 o \.webm/);
   });
 
   it("acepta un archivo EXACTAMENTE en el limite", () => {
-    // El borde inclusivo importa: rechazarlo seria rechazar un archivo valido.
+    // The inclusive edge matters: rejecting it would reject a valid file.
     const resultado = applicationFormSchema.safeParse({
       ...valido,
       video: archivoDe("video/mp4", MAX_VIDEO_BYTES),
@@ -98,7 +98,7 @@ describe("montoATexto", () => {
   });
 
   it("deja el texto tal cual si no es un numero, para que el esquema lo rechace", () => {
-    // Si se convirtiera a NaN o a 0 aqui, el mensaje de error perderia sentido.
+    // Converting to NaN or 0 here would make the error message meaningless.
     expect(montoATexto("ocho millones")).toBe("ocho millones");
   });
 

@@ -4,6 +4,8 @@ import type { UploadAuthorization, VideoContentType } from "@educacion-estrella/
 import { useValidatedForm } from "../lib/useValidatedForm.js";
 import { confirmar, avisarExito } from "../lib/dialogs.js";
 import { Field } from "../components/Field.js";
+import { Combobox } from "../components/Combobox.js";
+import instituciones from "../features/applications/institutions.json";
 import { FileField } from "../components/FileField.js";
 import { Button } from "../components/Button.js";
 import { ProgressBar } from "../components/ProgressBar.js";
@@ -21,7 +23,7 @@ import {
   UploadError,
 } from "../features/applications/upload.js";
 
-/** Solicitud ya registrada cuya subida quedo a medias, para poder reintentar. */
+/** An application already registered whose upload did not finish. */
 type Pendiente = {
   applicationId: string;
   upload: UploadAuthorization;
@@ -65,8 +67,7 @@ export function NewApplicationPage() {
 
       await avisarSubidaCompletada(applicationId);
     } catch (error) {
-      // Cancelar es una accion deliberada, no un fallo que reportar. Se deja la
-      // solicitud como pendiente para que el boton de reintentar siga ahi.
+      // Cancelling is deliberate, not a failure to report.
       if (esCancelacion(error)) return;
       throw error;
     } finally {
@@ -108,8 +109,8 @@ export function NewApplicationPage() {
         videoContentType: valido.video.type as VideoContentType,
       });
 
-      // Se guarda antes de transferir: si la subida falla, el reintento
-      // reutiliza esta solicitud en lugar de crear otra.
+      // Stored before transferring so a retry reuses this application instead of
+      // creating another.
       setPendiente({ applicationId, upload, archivo: valido.video });
 
       await ejecutarSubida(applicationId, upload, valido.video);
@@ -121,8 +122,8 @@ export function NewApplicationPage() {
     const enCurso = pendiente;
 
     void enviar(datosDelFormulario(enCurso.archivo), async () => {
-      // La autorizacion anterior pudo caducar, asi que se pide una nueva sobre
-      // la MISMA solicitud.
+      // The previous authorization may have expired: a new one over the SAME
+      // application.
       const upload = await renovarAutorizacion(enCurso.applicationId);
       await ejecutarSubida(enCurso.applicationId, upload, enCurso.archivo);
     });
@@ -138,7 +139,7 @@ export function NewApplicationPage() {
 
     if (!confirmado) return;
 
-    // Aborta la peticion de verdad, no solo deja de mostrar el progreso.
+    // Aborts the request for real, not just hides the progress.
     cancelacion.current?.abort();
   }
 
@@ -171,13 +172,17 @@ export function NewApplicationPage() {
           disabled={subiendo}
         />
 
-        <Field
+        {/* Suggests, does not restrict: the list only covers Colombian higher
+            education, so another institution can be typed. */}
+        <Combobox
           id="institution"
           label="Institución educativa"
+          opciones={instituciones}
           value={institution}
-          onChange={(e) => setInstitution(e.target.value)}
+          onChange={setInstitution}
           error={errores.institution}
           disabled={subiendo}
+          ayuda="Escribe para buscar. Si no aparece, puedes escribirla completa."
         />
 
         <Field
@@ -248,7 +253,7 @@ export function NewApplicationPage() {
   );
 }
 
-/** El titulo dice en que paso fallo, que es lo que determina qué puede hacer el usuario. */
+// The title says which step failed, which determines what the user can do next.
 function tituloSegunPaso(error: unknown): string {
   if (!(error instanceof UploadError)) return "No se pudo enviar la solicitud";
 

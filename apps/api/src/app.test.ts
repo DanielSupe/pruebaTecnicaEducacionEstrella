@@ -11,8 +11,7 @@ const config = {
   videosBucketName: "bucket-de-prueba",
 };
 
-// Doble del verificador: estas pruebas son del contrato de la app, no de la
-// verificacion de tokens. Esa vive en authenticate.test.ts.
+// These tests are about the app contract, not token verification.
 const verifier = { verify: () => Promise.resolve({ sub: "usuario-de-prueba" }) };
 
 const app = () => createApp(config, verifier);
@@ -44,8 +43,8 @@ describe("rutas desconocidas", () => {
 });
 
 describe("errores inesperados", () => {
-  // Se monta una app minima con una ruta que revienta a proposito: es la unica
-  // forma de ejercitar el camino del fallo no previsto.
+  // A route that blows up on purpose: the only way to exercise the unexpected
+  // failure path.
   function appQueFalla(handler: express.RequestHandler) {
     const app = express();
     app.get("/boom", handler);
@@ -69,7 +68,7 @@ describe("errores inesperados", () => {
       error: { code: "INTERNAL_ERROR", message: "Ocurrió un error inesperado." },
     });
 
-    // Lo que de verdad importa: nada del error original viaja al cliente.
+    // What matters: nothing of the original error travels to the client.
     const cuerpo = JSON.stringify(res.body) + res.text;
     expect(cuerpo).not.toContain(secreto);
     expect(cuerpo).not.toContain("at ");
@@ -87,16 +86,16 @@ describe("errores inesperados", () => {
 
     expect(espia).toHaveBeenCalledOnce();
 
-    // Ojo: JSON.stringify de un Error devuelve {}, porque sus propiedades no son
-    // enumerables. Hay que mirar el objeto en si.
+    // JSON.stringify of an Error returns {} because its properties are not
+    // enumerable. The object itself must be inspected.
     const registrado = espia.mock.calls[0]?.[1];
     expect(registrado).toBeInstanceOf(Error);
     expect((registrado as Error).message).toBe(secreto);
   });
 
   it("captura tambien el rechazo de un manejador asincrono, sin envoltorios", async () => {
-    // En Express 4 esto dejaba la peticion colgada hasta agotar el tiempo de
-    // espera. Es la razon concreta por la que se eligio Express 5.
+    // On Express 4 this left the request hanging until timeout. That is the
+    // concrete reason Express 5 was chosen.
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const res = await request(

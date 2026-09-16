@@ -34,8 +34,8 @@ describe("monto solicitado", () => {
   });
 
   it("rechaza un monto fuera del rango de enteros seguros", () => {
-    // No es una regla de negocio: más allá de este punto el número no sobreviviría
-    // intacto a la ida y vuelta al almacenamiento.
+    // Not a business rule: beyond this point the number would not survive the
+    // round trip to storage intact.
     const result = createApplicationInputSchema.safeParse({
       ...validInput,
       amount: Number.MAX_SAFE_INTEGER + 2,
@@ -85,8 +85,7 @@ describe("tipo de contenido del video", () => {
   });
 
   it("no acepta un tamaño declarado: el limite lo impone la politica firmada", () => {
-    // Si esto pasara, el cliente estaria enviando un numero que no demuestra
-    // nada y que ademas hay que mantener sincronizado con el limite real.
+    // If this passed, the client would be sending a number that proves nothing.
     const resultado = createApplicationInputSchema.safeParse({
       ...validInput,
       videoSizeBytes: 1024,

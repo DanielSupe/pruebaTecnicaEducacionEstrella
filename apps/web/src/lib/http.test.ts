@@ -52,7 +52,7 @@ describe("toApiError: la API no respondio", () => {
 
     expect(error.code).toBe("NETWORK_ERROR");
     expect(error.retriable).toBe(true);
-    // "Network Error" no es un mensaje para una persona.
+    // "Network Error" is not a message for a person.
     expect(error.message).not.toContain("Network Error");
     expect(error.message).toMatch(/conectar/i);
   });

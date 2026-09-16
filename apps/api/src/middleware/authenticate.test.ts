@@ -17,7 +17,7 @@ const aceptaTodo: AccessTokenVerifier = {
 };
 
 const rechazaTodo: AccessTokenVerifier = {
-  // Mensaje deliberadamente revelador: la prueba comprueba que NO se filtra.
+  // Deliberately revealing message: the test checks it does NOT leak.
   verify: () => Promise.reject(new Error("Token issued for client 9999, expected 1234")),
 };
 
@@ -57,8 +57,8 @@ describe("rutas protegidas", () => {
 
     expect(res.status).toBe(401);
 
-    // Lo importante: el motivo real no viaja. Decirle a quien prueba tokens que
-    // "el cliente esperado es 1234" es regalarle informacion.
+    // The real reason must not travel. Telling whoever is probing tokens that
+    // "the expected client is 1234" is handing them information.
     const cuerpo = JSON.stringify(res.body) + res.text;
     expect(cuerpo).not.toContain("9999");
     expect(cuerpo).not.toContain("1234");
@@ -86,7 +86,7 @@ describe("rutas protegidas", () => {
   });
 
   it("ignora cualquier identidad que llegue en la peticion", async () => {
-    // Si esto fallara, cualquiera podria actuar en nombre de otro.
+    // If this failed, anyone could act on someone else's behalf.
     const res = await request(createApp(config, aceptaTodo))
       .get("/api/v1/me")
       .query({ userId: "usuario-ajeno" })

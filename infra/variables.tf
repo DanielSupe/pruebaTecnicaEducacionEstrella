@@ -56,3 +56,41 @@ variable "log_retention_days" {
   type        = number
   default     = 14
 }
+
+# The default of -1 means "no reservation of its own", and it is not neglect: this
+# account has a TOTAL limit of 10 concurrent executions and AWS requires leaving at
+# least 10 unreserved, so reserving any amount is impossible here. The account
+# limit already acts as the cap.
+#
+# On an account with the usual limit this takes a concrete number, and then the cap
+# is per function, which is what you want.
+variable "api_reserved_concurrency" {
+  description = "Ejecuciones simultaneas reservadas para la API. -1 desactiva la reserva."
+  type        = number
+  default     = -1
+}
+
+# The default is the right one for any real environment. This environment, which is
+# disposable, opts out in its own variables file.
+variable "videos_bucket_force_destroy" {
+  description = "Permitir destruir el bucket de videos aunque conserve objetos."
+  type        = bool
+  default     = false
+}
+
+# Optional on purpose: whoever clones this repository does not necessarily own a
+# domain, and requiring one would make the deployment reproducible only by its
+# author.
+variable "web_domain" {
+  description = "Subdominio propio para la aplicacion. Vacio para usar el dominio de la distribucion."
+  type        = string
+  default     = ""
+
+  validation {
+    # A domain apex cannot hold a CNAME: the DNS specification forbids it, because
+    # the authority records live there. It would need an ALIAS record, a
+    # proprietary extension most registrars do not offer.
+    condition     = var.web_domain == "" || length(split(".", var.web_domain)) >= 3
+    error_message = "web_domain debe ser un subdominio (app.ejemplo.com), no el dominio raiz."
+  }
+}

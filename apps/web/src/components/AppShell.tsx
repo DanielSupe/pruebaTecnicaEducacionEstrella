@@ -4,17 +4,12 @@ import { signOut } from "../lib/session.js";
 import { confirmar } from "../lib/dialogs.js";
 import { Sidebar } from "./Sidebar.js";
 
-/**
- * Estructura comun de las pantallas privadas: solo cambia el contenido.
- * La marca aparece una sola vez, en el lateral.
- */
 export function AppShell() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   async function cerrarSesion() {
-    // Accion con consecuencia: se confirma para que un clic accidental no
-    // eche a nadie fuera a mitad de un formulario.
+    // Confirmed so a stray click does not throw someone out mid-form.
     const confirmado = await confirmar({
       titulo: "¿Cerrar sesión?",
       mensaje: "Tendrás que volver a entrar para consultar tus solicitudes.",
@@ -32,11 +27,9 @@ export function AppShell() {
     <div className="min-h-screen bg-slate-50">
       <Sidebar onCerrarSesion={() => void cerrarSesion()} />
 
-      {/* El hueco del lateral se reserva con relleno en un envoltorio, no con
-          margen en el contenido: con margen izquierdo fijo, el mx-auto del
-          contenido deja de centrarlo y en pantallas anchas queda pegado al
-          lateral. Por debajo de ese ancho la barra va arriba y no hay hueco
-          que reservar. */}
+      {/* The sidebar gap is reserved with padding on a wrapper, not a margin on the
+          content: with a fixed left margin, mx-auto stops centring it and on wide
+          screens it sticks to the sidebar. */}
       <div className="lg:pl-64">
         <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
           <Outlet />

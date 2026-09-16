@@ -32,8 +32,8 @@ describe("loadConfig", () => {
   });
 
   it("falla si falta una variable obligatoria, diciendo cual", () => {
-    // Sin esto, un despliegue mal configurado se rompe a mitad de una peticion
-    // real en vez de negarse a arrancar.
+    // Without this, a misconfigured deployment breaks mid-request instead of
+    // refusing to start.
     expect(() => loadConfig({})).toThrowError(/CORS_ALLOWED_ORIGINS/);
   });
 

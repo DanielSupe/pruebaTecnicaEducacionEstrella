@@ -1,13 +1,6 @@
 import type { ReactNode } from "react";
 import logotipo from "../../assets/Logo-educacion.png";
 
-/**
- * Estructura comun de las pantallas de acceso.
- *
- * La marca aparece aqui y no en una cabecera: estas pantallas no la tienen, asi
- * que el logotipo es lo que identifica de quien es la aplicacion. Ancho acotado
- * porque un formulario a lo ancho de un monitor es un formulario que cansa.
- */
 export function AuthLayout({
   titulo,
   descripcion,

@@ -16,16 +16,14 @@ terraform {
     }
   }
 
-  # El estado vive en local y no se versiona. Es una limitacion consciente para un
-  # unico desarrollador: un backend remoto exigiria crear antes el bucket que lo
-  # aloja, fuera de este mismo Terraform. Ver design.md del change setup-infra-base.
+  # State lives locally and is not versioned. A remote backend would require
+  # creating the bucket that hosts it first, outside this same Terraform.
 }
 
 provider "aws" {
   region = var.aws_region
 
-  # Todo recurso queda identificable en la factura y en la consola sin repetir
-  # bloques de tags en cada resource.
+  # Every resource stays identifiable in the bill without repeating tag blocks.
   default_tags {
     tags = {
       Project   = var.project_name

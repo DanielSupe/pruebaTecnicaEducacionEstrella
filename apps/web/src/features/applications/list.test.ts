@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { PaginatedApplications } from "@educacion-estrella/shared";
 import { applicationsQuery, solicitudesDe } from "./list.js";
 
-/** El tipo de la opción es una unión; aquí siempre es la función. */
+/** The option type is a union; here it is always the function. */
 const siguientePuntero = applicationsQuery.getNextPageParam as (
   ultima: PaginatedApplications,
 ) => string | undefined;
@@ -18,20 +18,20 @@ function pagina(items: number, nextCursor?: string): PaginatedApplications {
 
 describe("el puntero de continuación", () => {
   it("se propaga TAL CUAL lo entregó la API", () => {
-    // Es opaco a propósito: el servidor reconstruye la partición desde el
-    // token, no desde el puntero. Interpretarlo aquí solo podría estropearlo.
+    // Opaque on purpose: the server rebuilds the partition from the token, not
+    // from the cursor. Interpreting it here could only break it.
     const cursor = "QVBQIzAxSFhZWg";
 
     expect(siguientePuntero(pagina(20, cursor))).toBe(cursor);
   });
 
   it("sin puntero en la respuesta, no hay página siguiente", () => {
-    // Devolver undefined es lo que apaga el botón de traer más.
+    // Returning undefined is what turns off the load-more button.
     expect(siguientePuntero(pagina(3))).toBeUndefined();
   });
 
   it("una página llena sin puntero tampoco ofrece más", () => {
-    // El corte lo decide el servidor, no el número de elementos recibidos.
+    // The server decides where to cut, not the number of items received.
     expect(siguientePuntero(pagina(20))).toBeUndefined();
   });
 });

@@ -15,11 +15,11 @@ const marcarConfirmado = vi.fn();
 const firmarLectura = vi.fn();
 const listarSolicitudes = vi.fn();
 
-/** Registro del orden en que se llamaron las operaciones del aviso. */
+/** Records the order the notify operations were called in. */
 const orden: string[] = [];
 
-// Solo se simula lo que habla con AWS. El repositorio y el autorizador se
-// inyectan como dependencias, asi que no hace falta interceptar modulos.
+// Only what talks to AWS is doubled. The repository and storage are injected, so
+// no module interception is needed.
 import { createApplicationsRouter } from "./routes.js";
 
 const repositorio = {
@@ -60,7 +60,7 @@ const datosValidos = {
   videoContentType: "video/mp4",
 };
 
-/** Simula el middleware de autenticación: estas pruebas son de la ruta. */
+/** Stands in for the auth middleware: these tests are about the route. */
 function autenticaComo(userId: string | null): RequestHandler {
   return (req, _res, next) => {
     if (userId) req.user = { userId };

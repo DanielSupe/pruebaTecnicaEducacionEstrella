@@ -1,14 +1,7 @@
-# Permisos que necesita la API.
-#
-# Se define aqui, junto al change que escribe el codigo que los usa, y NO se
-# adjunta a ningun rol todavia: el rol de la funcion llega con el despliegue.
-# El motivo es practico: los permisos se acotan bien cuando sabes exactamente
-# que operaciones hace el codigo, no semanas despues intentando recordarlo.
-#
-# Por que la API necesita permiso de escritura en S3 si nunca sube el archivo:
-# al firmar una politica de subida, quien firma esta delegando SUS permisos. S3
-# valida la subida contra lo que puede hacer el firmante, asi que sin PutObject
-# la politica seria valida y la subida fallaria igualmente.
+# Why the API needs write permission on S3 even though it never uploads the file:
+# signing an upload policy delegates the SIGNER's permissions. S3 validates the
+# upload against what the signer may do, so without PutObject the policy would be
+# valid and the upload would fail anyway.
 data "aws_iam_policy_document" "api" {
   statement {
     sid    = "EscribirSolicitudes"
@@ -32,13 +25,11 @@ data "aws_iam_policy_document" "api" {
       "s3:PutObject",
       "s3:PutObjectTagging",
 
-      # Lo que exige HeadObject, aunque el nombre de la operacion no lo sugiera:
-      # comprobar si un objeto existe y con que metadatos se autoriza con el
-      # permiso de lectura.
+      # What HeadObject requires, although the operation name does not suggest it.
       "s3:GetObject",
     ]
 
-    # Solo bajo el prefijo de videos, no sobre el bucket entero.
+    # Under the videos prefix only, not the whole bucket.
     resources = ["${aws_s3_bucket.videos.arn}/videos/*"]
   }
 }

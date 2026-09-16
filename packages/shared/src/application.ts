@@ -1,14 +1,8 @@
 import { z } from "zod";
 import { videoContentTypeSchema, uploadAuthorizationSchema } from "./video.js";
 
-/**
- * Estados de una solicitud.
- *
- * Solo dos, y modelan el ciclo de vida de la *solicitud*, no el del crédito: la
- * aprobación o el rechazo quedan fuera de alcance por la sección 6 del enunciado.
- * Un fallo de subida no es un estado propio, es ausencia de progreso: la solicitud
- * sigue en PENDING_VIDEO y el usuario reintenta.
- */
+// Only two, and they model the lifecycle of the APPLICATION, not of the credit.
+// An upload failure is not a state of its own: it is absence of progress.
 export const APPLICATION_STATUSES = ["PENDING_VIDEO", "UNDER_REVIEW"] as const;
 
 export const applicationStatusSchema = z.enum(APPLICATION_STATUSES, {
@@ -17,7 +11,6 @@ export const applicationStatusSchema = z.enum(APPLICATION_STATUSES, {
 
 export type ApplicationStatus = z.infer<typeof applicationStatusSchema>;
 
-/** Datos que aporta el solicitante en el formulario. */
 export const applicationFieldsSchema = z.object({
   fullName: z
     .string({ error: "El nombre completo es obligatorio" })
@@ -38,13 +31,12 @@ export const applicationFieldsSchema = z.object({
     .trim()
     .min(2, "El programa académico debe tener al menos 2 caracteres")
     .max(120, "El programa académico no puede superar los 120 caracteres"),
-  // Entero positivo sin máximo de negocio: el enunciado no fija uno y no se inventa.
-  // z.int() ya acota al mayor entero que JavaScript representa con exactitud, que es
-  // el único tope real: más allá, el valor no sobreviviría intacto al almacenamiento.
+  // No business maximum: the brief does not set one. z.int() already caps at the
+  // largest integer JavaScript represents exactly, which is the only real limit.
   amount: z
     .int({
-      // El mensaje distingue ausencia de invalidez: decirle "debe ser un numero
-      // entero, sin decimales" a quien no ha escrito nada no ayuda a corregir.
+      // Distinguishes absence from invalidity: telling someone who typed nothing
+      // that it "must be a whole number" does not help them fix it.
       error: (issue) =>
         issue.input === undefined
           ? "El monto solicitado es obligatorio"
@@ -55,36 +47,25 @@ export const applicationFieldsSchema = z.object({
 
 export type ApplicationFields = z.infer<typeof applicationFieldsSchema>;
 
-/**
- * Cuerpo de la petición que crea una solicitud.
- *
- * Es estricto a propósito: una clave desconocida es un error explícito y no algo que
- * se descarte en silencio, para que un cliente no pueda intentar fijar `status` o
- * `userId`, que los controla el servidor.
- */
+// Strict on purpose: an unknown key is an explicit error, so a client cannot try
+// to set `status` or `userId`, which the server controls.
 export const createApplicationInputSchema = z.strictObject({
   ...applicationFieldsSchema.shape,
-  // Solo el tipo de contenido: hace falta para construir la ruta del objeto y
-  // para fijarlo en la politica firmada. El tamano no se declara — lo acota esa
-  // misma politica, y un numero que envia el cliente puede mentir.
+  // Content type only. The size is NOT declared: the signed policy caps it, and a
+  // number sent by the client can lie.
   videoContentType: videoContentTypeSchema,
 });
 
 export type CreateApplicationInput = z.infer<typeof createApplicationInputSchema>;
 
-/**
- * Solicitud tal y como la devuelve la API.
- *
- * Separada de la entrada: lo que el servidor controla (identificador, estado, fechas y
- * la referencia al video almacenado) nunca forma parte de lo que el cliente envía.
- */
+// Separate from the input: what the server controls is never part of what the
+// client sends.
 export const applicationSchema = z.object({
   ...applicationFieldsSchema.shape,
   applicationId: z.string().min(1),
   status: applicationStatusSchema,
   videoContentType: videoContentTypeSchema,
-  // Opcional: el tamano real se conoce al verificar el objeto almacenado, en la
-  // confirmacion. Antes de eso no hay nada que registrar.
+  // Known only after verifying the stored object.
   videoSizeBytes: z.int().positive().optional(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
@@ -92,7 +73,6 @@ export const applicationSchema = z.object({
 
 export type Application = z.infer<typeof applicationSchema>;
 
-/** Respuesta de la creacion de una solicitud. */
 export const createApplicationResponseSchema = z.object({
   applicationId: z.string().min(1),
   status: applicationStatusSchema,
@@ -101,14 +81,9 @@ export const createApplicationResponseSchema = z.object({
 
 export type CreateApplicationResponse = z.infer<typeof createApplicationResponseSchema>;
 
-/**
- * Parametros de la consulta del listado.
- *
- * Aqui SI se convierte desde texto, al contrario que en el cuerpo de la
- * creacion: una cadena de consulta solo puede transportar texto, asi que no hay
- * nada que relajar. En un cuerpo JSON aceptar "5000" donde se espera un numero
- * si relajaria la validacion, y por eso alli no se hace.
- */
+// Coercion IS used here, unlike in the request body: a query string can only
+// carry text, so there is nothing to relax. In a JSON body, accepting "5000"
+// where a number is expected would weaken the validation.
 export const listApplicationsQuerySchema = z.object({
   limit: z.coerce
     .number({ error: "El límite debe ser un número" })
@@ -117,13 +92,12 @@ export const listApplicationsQuerySchema = z.object({
     .max(50, "El límite no puede superar 50")
     .default(20),
 
-  // Opaco a proposito: el cliente lo devuelve tal cual sin interpretarlo.
+  // Opaque on purpose: the client returns it untouched.
   cursor: z.string().min(1).optional(),
 });
 
 export type ListApplicationsQuery = z.infer<typeof listApplicationsQuerySchema>;
 
-/** Una pagina de solicitudes. Sin puntero significa que no quedan mas. */
 export const paginatedApplicationsSchema = z.object({
   items: z.array(applicationSchema),
   nextCursor: z.string().optional(),

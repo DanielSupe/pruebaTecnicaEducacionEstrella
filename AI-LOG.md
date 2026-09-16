@@ -1,0 +1,94 @@
+# Bitácora de trabajo con IA
+
+Usé Claude Code durante todo el proyecto. Lo que más determinó el resultado no fue qué le pedí en
+cada momento, sino **el modelo de trabajo que le impuse antes de empezar**.
+
+## Escribir primero, programar después
+
+Usé [OpenSpec](openspec/) para que **ninguna funcionalidad empezara por el código**. Cada una nace
+como un _change_ con tres artefactos escritos antes de tocar nada:
+
+- `proposal.md` — por qué se hace, qué decisiones tiene detrás y **qué alternativas se descartan**.
+- `specs/` — los requisitos en forma verificable, con escenarios.
+- `tasks.md` — el desglose, que luego sirve de lista de verificación.
+
+Al terminar, el change se archiva y sus requisitos se integran en la especificación viva del
+proyecto. El resultado son **16 changes, 6 capacidades, 77 requisitos y 176 escenarios**, y un
+historial donde cada commit apunta al change que lo justifica.
+
+Encima de eso, tres paradas obligatorias con confirmación explícita: **plan → artefactos →
+implementación**. La segunda existe porque **escribir la especificación es justo donde aparecen los
+huecos del plan**, y pasó de forma literal más de una vez: redactando la del listado salieron dos
+requisitos que el plan no contemplaba —cerrar la ventana con una subida en curso, y no guardar el
+enlace temporal del video para reutilizarlo—, y ninguno se me habría ocurrido mirando código.
+
+El efecto secundario más útil es que **obliga a escribir lo descartado**. Una decisión razonada en
+el momento en que se toma se sostiene sola; reconstruida semanas después es, en el mejor de los
+casos, una racionalización de lo que ya se había hecho.
+
+## Las reglas: `CLAUDE.md` y skills
+
+Antes del primer change escribí un `CLAUDE.md` con el rol, las convenciones y las reglas duras
+—nada hardcodeado, validar en los dos lados, ningún secreto en el repositorio—. Después lo
+completé con _skills_, que son instrucciones que se cargan solas cuando la tarea las toca:
+
+**`git-workflow`.** Un change igual a un commit, formato del mensaje, ramas, y un escáner de
+secretos que bloquea el commit si detecta `.env`, claves o credenciales en el área de preparación.
+Se ejecutó antes de cada uno de los 19 commits.
+
+**`web-design-system`.** Esta se la pedí a él: en lugar de improvisar estilos pantalla a pantalla,
+que escribiera primero el sistema. **Partiendo del logo** derivó la paleta, la tipografía, el
+espaciado y las reglas de uso de cada color, de modo que la interfaz sigue los estilos de la marca
+y no una elección estética cualquiera.
+
+Fijar esas reglas una vez acabó frenándole a él mismo: al construir pantallas nuevas, la skill le
+recordaba restricciones que él había establecido al principio y que, sin el documento, habría
+vuelto a decidir de cero cada vez.
+
+## Dónde su propuesta no funcionó
+
+**Verificaciones que no verificaban nada.** El patrón que más veces tuve que cortar, y el más
+peligroso porque produce informes en verde.
+
+- Para probar que una subida se puede cancelar a mitad, propuso cancelarla y comprobar que la
+  ventana se cerraba. Lo hizo tres veces y las tres **la subida ganó la carrera**: la solicitud
+  acababa enviada, o sea que se había completado en vez de abortarse. Solo quedó demostrado
+  grabando un video de 134 MB para que la transferencia durara, cancelando al 1 % y comprobando
+  después que la solicitud seguía pendiente y **que no quedó ningún objeto en S3**.
+- Afirmó que la construcción del frontend falla si falta una variable. Devolvía código de salida 0:
+  había un `.env` local que el constructor leía. La garantía era cierta; la prueba estaba mal.
+- Midió un contraste y dio 1,62:1, que habría sido un problema de accesibilidad grave. La medición
+  leía valores en formato `oklch` como si fueran canales RGB.
+
+Le exigí que cada grupo de pruebas se validara **mutando el comportamiento que debía proteger** y
+comprobando que alguna se rompía. Varias veces no se rompió ninguna.
+
+**Premisas equivocadas presentadas con seguridad.** Al proponer servir frontend y API bajo un único
+origen afirmó que eso eliminaba el CORS y permitía una política de seguridad mínima. Las dos cosas
+eran falsas: el bucket de videos sigue necesitando CORS para la subida directa, y la librería de
+autenticación llama a Cognito **directamente desde el navegador**, que es otro origen. Corregirlo
+cambió la política entera, no un detalle.
+
+## Lo que descarté
+
+- **Una librería de formularios** para la pantalla de solicitud: las de acceso ya usaban un hook
+  propio, y tener dos formas de hacer formularios conviviendo es lo que se señala al revisar
+  coherencia.
+- **El nombre `confirm`** para el endpoint que cierra la subida: se leía como "aprobar el crédito",
+  que está fuera de alcance. Pasó a `complete-upload`.
+- **Declarar el tamaño del video desde el cliente.** Un número que envía el navegador no demuestra
+  nada; el límite real lo impone la política firmada.
+- **Su recomendación sobre los errores de credenciales**, que prefería mostrarlos bajo el campo.
+  Elegí ventana emergente y lo implementó dejando constancia de que iba contra su criterio, que es
+  lo que le pedí: que sustente, no que obedezca en silencio.
+
+## Qué aprendí sobre dirigirlo
+
+Lo que mejor funcionó fue **pedir la garantía, no el comando en verde**. "Comprueba que el bucket es
+privado" produce una afirmación; "intenta leerlo sin firma y enséñame el código de respuesta"
+produce una prueba. Igual con la política de seguridad: una consola limpia se vería igual si la
+política no se estuviera aplicando, así que hubo que intentar inyectar script y ver que lo
+bloqueaba.
+
+Y conviene desconfiar de su instrumental antes que de la realidad. Dos veces un número alarmante
+—el contraste, y un registro DNS que "no existía"— venía de una medición mal hecha.

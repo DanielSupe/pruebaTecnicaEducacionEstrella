@@ -1,17 +1,15 @@
 resource "aws_cognito_user_pool" "main" {
   name = "${var.project_name}-users"
 
-  # CRITICO: username_attributes, NO alias_attributes.
+  # CRITICAL: username_attributes, NOT alias_attributes.
   #
-  # Como alias, Cognito solo resuelve el correo cuando esta verificado. Dado que
-  # aqui se auto-confirma sin verificar el correo, usar alias produciria usuarios
-  # que se registran correctamente y NUNCA pueden iniciar sesion, con un error que
-  # no apunta a la causa. Como username, el correo ES la identidad y la
-  # verificacion es irrelevante para el inicio de sesion.
+  # As an alias, Cognito only resolves the email once it is verified. Since sign-up
+  # auto-confirms without verifying, using alias would produce users who register
+  # correctly and can NEVER sign in, with an error that does not point at the
+  # cause. As a username, the email IS the identity.
   username_attributes = ["email"]
 
-  # Deliberadamente sin auto_verified_attributes: asi Cognito no envia correos en
-  # ningun caso, que es lo coherente con no verificar.
+  # Deliberately no auto_verified_attributes, so Cognito never sends email.
 
   password_policy {
     minimum_length    = 8
@@ -19,13 +17,13 @@ resource "aws_cognito_user_pool" "main" {
     require_uppercase = true
     require_numbers   = true
 
-    # Sin simbolo obligatorio: el default de Cognito lo exige y es friccion
-    # innecesaria para quien evalue la demostracion. Se documenta en el README.
+    # No mandatory symbol: Cognito's default demands one and it is needless
+    # friction for whoever tries the demo. Documented in the README.
     require_symbols = false
   }
 
-  # "Olvide mi contrasena" queda fuera de alcance y ademas no tendria sentido con
-  # correos ficticios que nadie puede leer.
+  # Password recovery is out of scope and would be meaningless with fictional
+  # addresses nobody can read.
   account_recovery_setting {
     recovery_mechanism {
       name     = "admin_only"
@@ -54,23 +52,22 @@ resource "aws_cognito_user_pool_client" "web" {
   name         = "${var.project_name}-web"
   user_pool_id = aws_cognito_user_pool.main.id
 
-  # Un secreto incrustado en una aplicacion de pagina unica no es un secreto:
-  # cualquiera lo lee en el paquete descargado.
+  # A secret embedded in a single-page app is not a secret: anyone reads it in the
+  # downloaded bundle.
   generate_secret = false
 
   explicit_auth_flows = [
-    # Lo que usa el frontend: la contrasena nunca viaja, se demuestra su
-    # conocimiento sin enviarla.
+    # What the frontend uses: the password never travels.
     "ALLOW_USER_SRP_AUTH",
     "ALLOW_REFRESH_TOKEN_AUTH",
 
-    # Solo para verificacion administrativa desde la linea de comandos: exige
-    # credenciales de AWS, asi que no es superficie de ataque para un usuario final.
+    # Administrative verification from the command line only: it requires AWS
+    # credentials, so it is not attack surface for an end user.
     "ALLOW_ADMIN_USER_PASSWORD_AUTH",
   ]
 
-  # Token de acceso corto. La sesion persistente que pide el enunciado se sostiene
-  # con la renovacion, no alargando el token de acceso.
+  # Short access token. The persistent session is held by refresh, not by making
+  # the access token long-lived.
   access_token_validity  = 1
   id_token_validity      = 1
   refresh_token_validity = 30
@@ -81,7 +78,7 @@ resource "aws_cognito_user_pool_client" "web" {
     refresh_token = "days"
   }
 
-  # Evita revelar si un correo esta registrado a traves de mensajes de error
-  # distintos.
+  # Avoids revealing whether an address is registered through different error
+  # messages.
   prevent_user_existence_errors = "ENABLED"
 }

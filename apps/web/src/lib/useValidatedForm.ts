@@ -4,21 +4,14 @@ import { avisarError } from "./dialogs.js";
 
 type Errores = Record<string, string>;
 
-/** Como se traduce un fallo de la operacion a algo que se le puede enseñar a alguien. */
+/** How an operation failure becomes something you can show a person. */
 export type TraductorDeError = (error: unknown) => { titulo: string; mensaje: string };
 
-/**
- * Logica comun a los formularios de la aplicacion.
- *
- * Separa dos tipos de fallo que se confunden con facilidad:
- *  - El formato de lo escrito: se valida con Zod y se muestra BAJO cada campo.
- *  - La operacion fallo: eso va en ventana emergente y devuelve el foco al campo
- *    indicado, para que cerrar y corregir cueste lo menos posible.
- *
- * La traduccion del error se inyecta porque depende de con quien se hable: los
- * formularios de acceso traducen errores del directorio de usuarios; el de
- * solicitud, errores de nuestra propia API.
- */
+// Separates two kinds of failure that are easy to confuse: the format of what was
+// typed, shown UNDER each field, and the operation failing, which goes in a dialog
+// and hands focus back to the field to fix.
+//
+// The error translation is injected because it depends on who we are talking to.
 export function useValidatedForm<T>(schema: ZodType<T>, traducir: TraductorDeError) {
   const [errores, setErrores] = useState<Errores>({});
   const [enviando, setEnviando] = useState(false);
@@ -50,8 +43,8 @@ export function useValidatedForm<T>(schema: ZodType<T>, traducir: TraductorDeErr
       fallo = error;
     }
 
-    // El estado se limpia ANTES de abrir la ventana: si se hiciera despues, el
-    // boton seguiria diciendo "Enviando..." mientras el aviso dice que fallo.
+    // Cleared BEFORE opening the dialog: afterwards, the button would still say
+    // "Sending…" while the alert says it failed.
     setEnviando(false);
 
     if (fallo) {

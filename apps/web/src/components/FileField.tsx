@@ -5,13 +5,8 @@ import { Button } from "./Button.js";
 
 const ACEPTADOS = Object.keys(VIDEO_CONTENT_TYPES).join(",");
 
-/**
- * Selector del video.
- *
- * El atributo accept filtra lo que ofrece el dialogo del sistema, pero es una
- * ayuda, NO una validacion: se puede elegir cualquier archivo arrastrandolo o
- * cambiando el filtro. La comprobacion real la hace el esquema.
- */
+// The accept attribute filters what the system dialog offers, but it is help, NOT
+// validation: any file can still be chosen by dragging it or changing the filter.
 export function FileField({
   id,
   label,

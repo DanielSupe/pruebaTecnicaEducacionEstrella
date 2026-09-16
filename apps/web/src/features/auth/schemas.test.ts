@@ -57,7 +57,7 @@ describe("signUpSchema: confirmacion", () => {
   });
 
   it("señala el error en el campo de confirmacion, no en el de contraseña", () => {
-    // Importa: el error tiene que salir bajo el campo que el usuario debe corregir.
+    // The error must appear under the field the user has to fix.
     const resultado = signUpSchema.safeParse({
       ...registroValido,
       confirmPassword: "Distinta1",

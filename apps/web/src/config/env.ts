@@ -1,35 +1,41 @@
 import { z } from "zod";
 
-/**
- * Configuracion del frontend.
- *
- * Diferencia importante respecto a la API: aqui los valores se incrustan en
- * tiempo de CONSTRUCCION. Una variable ausente no se manifiesta al desplegar,
- * se manifiesta como una pantalla rota para el usuario. Por eso la construccion
- * es el ultimo momento en que se puede detectar, y por eso esto falla ruidosamente.
- *
- * Este es el UNICO archivo que lee import.meta.env.
- */
+// Values are baked in at BUILD time. A missing variable does not show up at deploy
+// time: it shows up as a broken screen for the user. The build is the last moment
+// it can be caught.
+//
+// This is the ONLY file that reads import.meta.env.
 const envSchema = z.object({
-  // z.url() por si solo acepta "localhost:3000": el parser lo lee como esquema
-  // "localhost:" con ruta "3000". Y olvidar el http:// es el error de
-  // configuracion mas comun, asi que el protocolo se comprueba de forma explicita.
+  // Two legitimate forms: an absolute URL with protocol (local development, where
+  // the API lives on another origin) and a root-relative path (cloud, where both
+  // share an origin, which also lets the bundle be built without knowing the
+  // domain).
+  //
+  // Still rejected: an absolute URL WITHOUT protocol. z.url() on its own accepts
+  // "localhost:3000", reading it as scheme "localhost:" with path "3000", and
+  // forgetting http:// is the most common configuration mistake.
   VITE_API_BASE_URL: z
-    .url({ error: "VITE_API_BASE_URL es obligatoria y debe ser una URL valida" })
+    .string({ error: "VITE_API_BASE_URL es obligatoria" })
+    .trim()
+    .min(1, "VITE_API_BASE_URL no puede estar vacia")
     .refine(
       (valor) => {
+        if (valor.startsWith("/")) return true;
+
         try {
           return /^https?:$/.test(new URL(valor).protocol);
         } catch {
           return false;
         }
       },
-      { error: "VITE_API_BASE_URL debe empezar por http:// o https://" },
+      {
+        error:
+          "VITE_API_BASE_URL debe ser una URL que empiece por http:// o https://, o una ruta que empiece por /",
+      },
     ),
 
-  // Identificadores del directorio de usuarios. No son secretos: viajan en el
-  // paquete que descarga el navegador. Pero sin valor por omision, porque
-  // apuntar al directorio equivocado parece funcionar hasta que no funciona.
+  // Not secrets: they travel in the downloaded bundle. But no defaults, because
+  // pointing at the wrong user pool looks like it works until it does not.
   VITE_COGNITO_USER_POOL_ID: z
     .string({ error: "VITE_COGNITO_USER_POOL_ID es obligatoria" })
     .trim()
@@ -58,7 +64,7 @@ export function loadConfig(source: Record<string, unknown> = import.meta.env): W
   }
 
   return {
-    // Se quita la barra final para no acabar construyendo rutas con doble barra.
+    // Trailing slash removed to avoid building paths with a double slash.
     apiBaseUrl: parsed.data.VITE_API_BASE_URL.replace(/\/+$/, ""),
     cognitoUserPoolId: parsed.data.VITE_COGNITO_USER_POOL_ID,
     cognitoClientId: parsed.data.VITE_COGNITO_CLIENT_ID,

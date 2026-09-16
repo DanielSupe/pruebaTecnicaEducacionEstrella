@@ -23,8 +23,8 @@ export function LoginPage() {
       await signIn({
         username: datos.email,
         password: datos.password,
-        // Explicito a proposito: el valor por omision de la libreria cambia
-        // entre versiones, y el App Client solo autoriza este flujo.
+        // Explicit on purpose: the library default changes between versions, and
+        // the App Client only authorises this flow.
         options: { authFlowType: "USER_SRP_AUTH" },
       });
       await refreshSession(queryClient);

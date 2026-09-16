@@ -72,6 +72,11 @@ lo que sabemos que va a crecer".
 - **Código en inglés**: identificadores, endpoints, estados (`PENDING_VIDEO`, `UNDER_REVIEW`).
   **Español** en los textos que ve el usuario, los mensajes de error de Zod, los artefactos de
   OpenSpec y los mensajes de commit.
+- **Los comentarios van en inglés**, como el resto del código, y solo cuando evitan un error:
+  una restricción externa que el código no revela, una propiedad de seguridad que parece
+  arbitraria, o un sitio donde la mejora obvia es incorrecta. Un comentario que repite la línea
+  siguiente envejece y acaba mintiendo; el razonamiento de una decisión vive en su propuesta de
+  OpenSpec, que sobrevive a que el código se mueva.
 - TypeScript estricto. Nada de `any`; si de verdad hace falta, `unknown` y se estrecha.
 - Errores: clases propias y un middleware central. Nada de `try/catch` que se traga el error ni
   de `console.log` como manejo de errores.

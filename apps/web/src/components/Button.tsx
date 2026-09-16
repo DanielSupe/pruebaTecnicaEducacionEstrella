@@ -2,18 +2,13 @@ import type { ButtonHTMLAttributes } from "react";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variante?: "primario" | "secundario" | "sutil" | "sutil-oscuro";
-  /** Texto que sustituye al contenido mientras la accion esta en curso. */
+  /** Text replacing the content while the action is in flight. */
   cargando?: string;
 };
 
-/**
- * Cada variante trae SU color de anillo de foco, no solo sus colores de fondo.
- * El anillo de la marca es oscuro y sobre fondo petroleo no se distinguiria,
- * que es justo cuando mas falta hace. Y va aqui y no en las clases base porque
- * entre dos utilidades del mismo tipo gana la que Tailwind emite mas tarde en
- * la hoja, no la que se escriba despues: dejar un color en la base y otro en la
- * variante es una carrera que no se controla.
- */
+// Each variant brings ITS OWN focus ring colour. It lives here and not in the base
+// classes because between two utilities of the same kind the winner is whichever
+// Tailwind emits later in the sheet, not whichever is written later.
 const VARIANTES = {
   primario: "bg-brand text-white hover:bg-brand-hover focus-visible:ring-brand",
   secundario:
@@ -45,8 +40,8 @@ export function Button({
         className ?? "",
       ].join(" ")}
     >
-      {/* Al cargar cambia el texto pero no desaparece: asi el boton conserva su
-          ancho y el contenido de alrededor no da un salto. */}
+      {/* The text changes but does not disappear, so the button keeps its width
+          and the surrounding content does not jump. */}
       {cargando ?? children}
     </button>
   );

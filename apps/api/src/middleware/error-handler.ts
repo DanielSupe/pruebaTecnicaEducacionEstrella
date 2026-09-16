@@ -1,7 +1,6 @@
 import type { ErrorRequestHandler, RequestHandler } from "express";
 import { AppError, NotFoundError } from "../errors.js";
 
-/** Forma unica de toda respuesta de error de la API. */
 type ErrorBody = {
   error: {
     code: string;
@@ -13,13 +12,9 @@ function body(code: string, message: string): ErrorBody {
   return { error: { code, message } };
 }
 
-/**
- * Errores que produce el parseo del cuerpo JSON.
- *
- * No son AppError porque no los lanzamos nosotros, pero tampoco son inesperados:
- * los provocamos al poner un limite de tamano y al aceptar JSON. Devolver 500 ante
- * un cuerpo mal formado seria culpar al servidor de un error del cliente.
- */
+// Not AppError because we do not throw them, but not unexpected either: we cause
+// them by accepting JSON with a size limit. Answering 500 to a malformed body
+// would blame the server for a client mistake.
 function clientBodyError(error: unknown): ErrorBody | null {
   if (typeof error !== "object" || error === null || !("type" in error)) return null;
 
@@ -38,10 +33,8 @@ function statusFor(error: unknown): number {
   return type === "entity.too.large" ? 413 : 400;
 }
 
-/**
- * Unico punto de la aplicacion que construye respuestas de error. Ningun manejador
- * de ruta formatea las suyas: si lo hicieran, el formato dejaria de ser uno.
- */
+// The only place that builds error responses. No route handler formats its own,
+// or the format would stop being one.
 export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
   if (error instanceof AppError) {
     res.status(error.statusCode).json(body(error.code, error.message));
@@ -54,17 +47,15 @@ export const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     return;
   }
 
-  // Inesperado: el detalle se registra en el servidor y NUNCA viaja al cliente.
-  // Una traza en la respuesta describe la estructura interna a quien la pida.
+  // Detail is logged server-side and NEVER travels: a stack trace in the response
+  // describes the internal structure to whoever asks for it.
   console.error("Error inesperado:", error);
 
   res.status(500).json(body("INTERNAL_ERROR", "Ocurrió un error inesperado."));
 };
 
-/**
- * Rutas desconocidas. Pasa por el mismo canal que el resto de errores para que un
- * 404 tenga el mismo formato que un 400, en lugar del HTML por omision de Express.
- */
+// Goes through the same channel as every other error so a 404 has the same shape
+// as a 400, instead of the default Express HTML.
 export const notFoundHandler: RequestHandler = (_req, _res, next) => {
   next(new NotFoundError("La ruta solicitada no existe."));
 };

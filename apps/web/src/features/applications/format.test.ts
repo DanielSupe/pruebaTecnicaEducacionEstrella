@@ -6,9 +6,8 @@ describe("fechaLegible", () => {
   it("traduce el instante de la API a una fecha en español", () => {
     const texto = fechaLegible("2026-09-13T10:00:00.000Z");
 
-    // Se afirma sobre las partes y no sobre la cadena entera: el separador y el
-    // punto tras el mes varían entre versiones de ICU, y fijarlos convertiría
-    // una prueba de comportamiento en una prueba de la librería.
+    // Asserting on parts, not the whole string: separators vary between ICU
+    // versions, and pinning them would test the library instead of the behaviour.
     expect(texto).toContain("2026");
     expect(texto.toLowerCase()).toContain("sep");
     expect(texto).toContain("13");
@@ -19,7 +18,7 @@ describe("fechaLegible", () => {
   });
 
   it("un instante ilegible no rompe la fila", () => {
-    // El resto de la solicitud se tiene que seguir viendo.
+    // The rest of the row must stay visible.
     expect(fechaLegible("no es una fecha")).toBe("—");
     expect(fechaLegible("")).toBe("—");
   });
@@ -29,15 +28,14 @@ describe("montoLegible", () => {
   it("agrupa los millares", () => {
     const texto = montoLegible(8_500_000);
 
-    // El separador concreto lo decide la configuración regional; lo que importa
-    // es que agrupe y que estén todos los dígitos.
+    // The locale decides the separator; what matters is that it groups.
     expect(texto).not.toBe("8500000");
     expect(texto.replace(/\D/g, "")).toBe("8500000");
   });
 
   it("NO añade símbolo de moneda", () => {
-    // No se persiste ninguna moneda: pintar un símbolo afirmaría algo que el
-    // dato no contiene. La unidad va en la cabecera de la columna.
+    // No currency is persisted: a symbol would assert something absent from the
+    // data.
     const texto = montoLegible(8_500_000);
 
     expect(texto).not.toContain("$");
@@ -67,16 +65,15 @@ describe("distintivoDeEstado", () => {
   });
 
   it("cada estado del dominio tiene su propio color", () => {
-    // Si dos estados compartieran clases, el distintivo dejaria de distinguir
-    // lo que espera al usuario de lo que sigue su curso.
+    // Sharing classes would stop the badge telling "waiting on you" from "under
+    // way".
     const clases = APPLICATION_STATUSES.map((e) => distintivoDeEstado(e).clases);
 
     expect(new Set(clases).size).toBe(APPLICATION_STATUSES.length);
   });
 
   it("un estado desconocido no rompe la fila", () => {
-    // Una API que anada estados no deberia dejar al usuario ante una pantalla
-    // rota: la solicitud se sigue viendo con el resto de sus datos.
+    // An API that adds states should not leave the user with a broken screen.
     const distintivo = distintivoDeEstado("APPROVED");
 
     expect(distintivo.texto).toBe("Estado desconocido");

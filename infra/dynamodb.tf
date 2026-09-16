@@ -1,19 +1,13 @@
-# Tabla unica de solicitudes.
+# The composite key answers "my applications" with no index and no Scan: PK is the
+# user and SK carries a time-ordered ULID.
 #
-# La clave compuesta resuelve el caso de uso de la vista "mis solicitudes" sin
-# indices ni Scan: PK identifica al usuario y SK lleva un ULID, que es ordenable
-# por tiempo. Consultar por PK en orden descendente devuelve las solicitudes mas
-# recientes primero.
-#
-# No hay indice secundario a proposito: no existe panel de administracion, asi que
-# un indice por estado seria codigo muerto que ademas duplica el coste de escritura.
+# No secondary index on purpose: there is no admin panel, so an index by status
+# would be dead weight that also doubles the write cost.
 resource "aws_dynamodb_table" "applications" {
   name = "${var.project_name}-applications"
 
-  # Provisionada y no bajo demanda: la capa siempre gratuita de AWS esta definida
-  # sobre capacidad provisionada (25 unidades de cada tipo), mientras que bajo
-  # demanda se factura desde la primera peticion. El enunciado pide no incurrir en
-  # costos y existia alternativa gratuita con la misma funcionalidad.
+  # Provisioned rather than on-demand: the always-free tier is defined over
+  # provisioned capacity, while on-demand bills from the first request.
   billing_mode   = "PROVISIONED"
   read_capacity  = var.dynamodb_read_capacity
   write_capacity = var.dynamodb_write_capacity
@@ -31,16 +25,13 @@ resource "aws_dynamodb_table" "applications" {
     type = "S"
   }
 
-  # Limpia las solicitudes que quedaron pendientes de video y nadie retomo.
-  # El borrado es eventual: DynamoDB puede tardar hasta 48 horas en aplicarlo.
+  # Deletion is eventual: DynamoDB may take up to 48 hours to apply it.
   ttl {
     attribute_name = "ttl"
     enabled        = true
   }
 
-  # Desactivada de forma explicita: la recuperacion a un punto en el tiempo se
-  # factura por GB almacenado y este es un entorno de demostracion con datos
-  # ficticios.
+  # Explicitly off: point-in-time recovery bills per GB stored.
   point_in_time_recovery {
     enabled = false
   }

@@ -15,8 +15,8 @@ describe("traduccion de errores del directorio de usuarios", () => {
   });
 
   it("da el MISMO mensaje si el correo no existe que si la contraseña no corresponde", () => {
-    // Distinguirlos permitiria averiguar que correos estan dados de alta
-    // probandolos uno a uno.
+    // Telling them apart would let someone discover which addresses are
+    // registered by trying them one by one.
     const noAutorizado = mensajeDeError(errorDeCognito("NotAuthorizedException"));
     const noEncontrado = mensajeDeError(errorDeCognito("UserNotFoundException"));
 

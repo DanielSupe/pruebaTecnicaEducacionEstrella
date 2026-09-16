@@ -1,12 +1,8 @@
 import { Amplify } from "aws-amplify";
 import { config } from "../config/config.js";
 
-/**
- * Configura la autenticacion una sola vez, al arrancar.
- *
- * Se importa unicamente aws-amplify/auth en el resto del codigo: el paquete
- * completo arrastra modulos de almacenamiento, analitica y APIs que no usamos.
- */
+// Only aws-amplify/auth is imported elsewhere: the full package drags in storage,
+// analytics and API modules we do not use.
 export function configureAuth(): void {
   Amplify.configure({
     Auth: {
